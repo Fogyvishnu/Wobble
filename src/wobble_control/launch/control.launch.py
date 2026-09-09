@@ -1,7 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, RegisterEventHandler
+from launch.actions import RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch_ros.actions import Node
 
@@ -13,7 +13,7 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['joint_state_broadcaster'],
+        arguments=['joint_state_broadcaster', '--controller-manager-timeout', '30'],
         output='screen'
     )
 
@@ -21,7 +21,7 @@ def generate_launch_description():
     left_wheel_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['left_wheel_effort_controller'],
+        arguments=['left_wheel_effort_controller', '--controller-manager-timeout', '30'],
         output='screen'
     )
 
@@ -29,7 +29,7 @@ def generate_launch_description():
     right_wheel_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['right_wheel_effort_controller'],
+        arguments=['right_wheel_effort_controller', '--controller-manager-timeout', '30'],
         output='screen'
     )
 
@@ -37,7 +37,7 @@ def generate_launch_description():
     hip_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['hip_position_controller'],
+        arguments=['hip_position_controller', '--controller-manager-timeout', '30'],
         output='screen'
     )
 

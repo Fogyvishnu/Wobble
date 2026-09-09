@@ -1,5 +1,6 @@
-balance_controller:
+wobble_balance_controller:
   ros__parameters:
+    use_sim_time: true
     loop_rate_hz: 200.0
 
     # Inner Pitch Balance Loop

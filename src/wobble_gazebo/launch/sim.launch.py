@@ -1,7 +1,8 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
@@ -17,11 +18,31 @@ def generate_launch_description():
     xacro_file = os.path.join(pkg_wobble_description, 'urdf', 'wobble.urdf.xacro')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
+    headless = LaunchConfiguration('headless')
+
     declare_use_sim_time = DeclareLaunchArgument(
         'use_sim_time',
         default_value='true',
         description='Use simulation clock if true'
     )
+
+    declare_headless = DeclareLaunchArgument(
+        'headless',
+        default_value='false',
+        description='Run Gazebo in headless mode without GUI if true'
+    )
+
+    # 1. Critical Environment Variables for Linux / Wayland & Network Discovery
+    conda_prefix = os.environ.get('CONDA_PREFIX', '')
+    conda_lib = os.path.join(conda_prefix, 'lib') if conda_prefix else ''
+    existing_plugin_path = os.environ.get('GZ_SIM_SYSTEM_PLUGIN_PATH', '')
+    plugin_path = f"{conda_lib}:{existing_plugin_path}" if conda_lib else existing_plugin_path
+
+    # Force gz-transport to use loopback to prevent Wi-Fi router multicast packet drops
+    set_gz_ip = SetEnvironmentVariable('GZ_IP', '127.0.0.1')
+    # Support Wayland natively with XCB fallback
+    set_qt_platform = SetEnvironmentVariable('QT_QPA_PLATFORM', 'wayland;xcb')
+    set_plugin_path = SetEnvironmentVariable('GZ_SIM_SYSTEM_PLUGIN_PATH', plugin_path)
 
     # Process URDF/Xacro
     robot_description = ParameterValue(
@@ -29,7 +50,7 @@ def generate_launch_description():
         value_type=str
     )
 
-    # 1. Robot State Publisher
+    # 2. Robot State Publisher
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -40,17 +61,28 @@ def generate_launch_description():
         }]
     )
 
-    # 2. Gazebo Harmonic Simulation Launcher
-    gz_sim = IncludeLaunchDescription(
+    # 3. Gazebo Harmonic Simulation Launchers (GUI or Headless)
+    gz_sim_gui = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')
         ),
         launch_arguments={
             'gz_args': f'-r -v 3 {world_path}'
-        }.items()
+        }.items(),
+        condition=UnlessCondition(headless)
     )
 
-    # 3. Spawn Robot in Gazebo
+    gz_sim_headless = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')
+        ),
+        launch_arguments={
+            'gz_args': f'-s -r -v 3 {world_path}'
+        }.items(),
+        condition=IfCondition(headless)
+    )
+
+    # 4. Spawn Robot in Gazebo
     spawn_robot = Node(
         package='ros_gz_sim',
         executable='create',
@@ -67,7 +99,7 @@ def generate_launch_description():
         ]
     )
 
-    # 4. ROS-Gazebo Bridge
+    # 5. ROS-Gazebo Bridge
     ros_gz_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -79,9 +111,14 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        set_gz_ip,
+        set_qt_platform,
+        set_plugin_path,
         declare_use_sim_time,
+        declare_headless,
         robot_state_publisher_node,
-        gz_sim,
+        gz_sim_gui,
+        gz_sim_headless,
         spawn_robot,
         ros_gz_bridge
     ])

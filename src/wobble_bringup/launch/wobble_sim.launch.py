@@ -15,17 +15,28 @@ def generate_launch_description():
     rviz_config_path = os.path.join(pkg_wobble_description, 'rviz', 'wobble.rviz')
 
     use_rviz = LaunchConfiguration('rviz')
+    headless = LaunchConfiguration('headless')
+
     declare_use_rviz = DeclareLaunchArgument(
         'rviz',
         default_value='true',
         description='Start RViz2 if true'
     )
 
+    declare_headless = DeclareLaunchArgument(
+        'headless',
+        default_value='false',
+        description='Run Gazebo in headless mode without GUI if true'
+    )
+
     # 1. Gazebo Harmonic Simulation & Spawner
     sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_wobble_gazebo, 'launch', 'sim.launch.py')
-        )
+        ),
+        launch_arguments={
+            'headless': headless
+        }.items()
     )
 
     # 2. Control System & Balance Node
@@ -48,6 +59,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         declare_use_rviz,
+        declare_headless,
         sim_launch,
         control_launch,
         rviz_node
