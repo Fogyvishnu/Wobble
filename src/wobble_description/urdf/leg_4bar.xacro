@@ -91,13 +91,10 @@
       </inertial>
     </link>
 
-    <joint name="joint_${prefix}_rocker_hip" type="continuous">
+    <joint name="joint_${prefix}_rocker_hip" type="fixed">
       <parent link="base_link"/>
       <child link="${prefix}_parallel_rocker"/>
       <origin xyz="-0.035 ${servo_y_offset} -0.02" rpy="0 0 0"/>
-      <axis xyz="0 1 0"/>
-      <mimic joint="joint_${prefix}_hip_servo" multiplier="1.0" offset="0.0"/>
-      <dynamics damping="0.02" friction="0.01"/>
     </joint>
 
     <!-- ==================== 4. Lower Leg / Wheel Carrier Link ==================== -->
@@ -136,13 +133,13 @@
     </link>
 
     <!-- 4-bar parallelogram knee joint keeping wheel carrier aligned during squatting -->
-    <joint name="joint_${prefix}_knee" type="continuous">
+    <joint name="joint_${prefix}_knee" type="revolute">
       <parent link="${prefix}_upper_crank"/>
       <child link="${prefix}_lower_leg"/>
       <origin xyz="0 0 ${-crank_length}" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
-      <mimic joint="joint_${prefix}_hip_servo" multiplier="-1.0" offset="0.0"/>
-      <dynamics damping="0.03" friction="0.01"/>
+      <limit lower="-1.570796" upper="1.570796" effort="2.0" velocity="10.0"/>
+      <dynamics damping="0.05" friction="0.02"/>
     </joint>
 
     <!-- ==================== 5. Suspension / Spring Compliant Mount ==================== -->

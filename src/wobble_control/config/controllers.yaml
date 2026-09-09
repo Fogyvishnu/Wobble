@@ -28,4 +28,6 @@ hip_position_controller:
   ros__parameters:
     joints:
       - joint_left_hip_servo
+      - joint_left_knee
       - joint_right_hip_servo
+      - joint_right_knee

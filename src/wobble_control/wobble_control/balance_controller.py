@@ -225,9 +225,14 @@ class WobbleBalanceController(Node):
         self.right_wheel_pub.publish(msg_r)
 
     def publish_posture(self):
-        # Publish symmetric target angles to both MG995 servos
+        # 4-bar parallelogram linkage: knee angle = -hip angle
         msg = Float64MultiArray()
-        msg.data = [self.target_squat_angle, self.target_squat_angle]
+        msg.data = [
+            self.target_squat_angle,
+            -self.target_squat_angle,
+            self.target_squat_angle,
+            -self.target_squat_angle
+        ]
         self.hip_servo_pub.publish(msg)
 
 

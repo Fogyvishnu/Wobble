@@ -40,8 +40,8 @@ def generate_launch_description():
 
     # Force gz-transport to use loopback to prevent Wi-Fi router multicast packet drops
     set_gz_ip = SetEnvironmentVariable('GZ_IP', '127.0.0.1')
-    # Support Wayland natively with XCB fallback
-    set_qt_platform = SetEnvironmentVariable('QT_QPA_PLATFORM', 'wayland;xcb')
+    # Set QT_QPA_PLATFORM to xcb for OGRE / RViz / Gazebo Xwayland compatibility
+    set_qt_platform = SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb')
     set_plugin_path = SetEnvironmentVariable('GZ_SIM_SYSTEM_PLUGIN_PATH', plugin_path)
 
     # Process URDF/Xacro
@@ -103,6 +103,7 @@ def generate_launch_description():
     ros_gz_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
+        name='wobble_ros_gz_bridge',
         output='screen',
         parameters=[{
             'config_file': bridge_config,

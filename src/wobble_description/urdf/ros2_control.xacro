@@ -18,8 +18,32 @@
       <state_interface name="velocity"/>
     </joint>
 
+    <!-- 4-Bar Knee Linkage (Left) -->
+    <joint name="joint_left_knee">
+      <command_interface name="position">
+        <param name="min">-1.570796</param>
+        <param name="max">1.570796</param>
+      </command_interface>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+
     <!-- MG995 Hip Servo (Right) -->
     <joint name="joint_right_hip_servo">
+      <command_interface name="position">
+        <param name="min">-1.570796</param>
+        <param name="max">1.570796</param>
+      </command_interface>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <!-- 4-Bar Knee Linkage (Right) -->
+    <joint name="joint_right_knee">
       <command_interface name="position">
         <param name="min">-1.570796</param>
         <param name="max">1.570796</param>
