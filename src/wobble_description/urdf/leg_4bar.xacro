@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="wobble_leg" params="prefix reflect">
+
+    <!-- Geometric dimensions -->
+    <xacro:property name="servo_y_offset" value="${reflect * (chassis_width / 2.0 + 0.015)}"/>
+    <xacro:property name="crank_length" value="0.08"/>
+    <xacro:property name="coupler_length" value="0.085"/>
+    <xacro:property name="link_radius" value="0.006"/>
+    <xacro:property name="link_mass" value="0.04"/>
+
+    <!-- ==================== 1. Hip Servo (MG995) Housing & Actuator ==================== -->
+    <link name="${prefix}_servo_horn">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="0.012" length="0.01"/>
+        </geometry>
+        <material name="light_gray"/>
+      </visual>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.02"/>
+        <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+      </inertial>
+    </link>
+
+    <!-- MG995 Hip Servo Joint: restricted to [-1.57, 1.57] radians per AGENT.md -->
+    <joint name="joint_${prefix}_hip_servo" type="revolute">
+      <parent link="base_link"/>
+      <child link="${prefix}_servo_horn"/>
+      <origin xyz="0.0 ${servo_y_offset} -0.02" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-1.570796" upper="1.570796" effort="2.0" velocity="10.0"/>
+      <dynamics damping="0.05" friction="0.02"/>
+    </joint>
+
+    <!-- ==================== 2. Upper Crank Link ==================== -->
+    <link name="${prefix}_upper_crank">
+      <visual>
+        <origin xyz="0 0 ${-crank_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.015 0.012 ${crank_length}"/>
+        </geometry>
+        <material name="accent_orange"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${-crank_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.015 0.012 ${crank_length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${-crank_length/2}" rpy="0 0 0"/>
+        <mass value="${link_mass}"/>
+        <inertia
+          ixx="${(link_mass/12.0) * (0.012*0.012 + crank_length*crank_length)}"
+          ixy="0" ixz="0"
+          iyy="${(link_mass/12.0) * (0.015*0.015 + crank_length*crank_length)}"
+          iyz="0"
+          izz="${(link_mass/12.0) * (0.015*0.015 + 0.012*0.012)}"/>
+      </inertial>
+    </link>
+
+    <joint name="joint_${prefix}_crank_mount" type="fixed">
+      <parent link="${prefix}_servo_horn"/>
+      <child link="${prefix}_upper_crank"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- ==================== 3. Parallel Rocker Link (4-Bar Kinematics) ==================== -->
+    <link name="${prefix}_parallel_rocker">
+      <visual>
+        <origin xyz="0 0 ${-crank_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.012 0.008 ${crank_length}"/>
+        </geometry>
+        <material name="light_gray"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${-crank_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.012 0.008 ${crank_length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${-crank_length/2}" rpy="0 0 0"/>
+        <mass value="${link_mass * 0.7}"/>
+        <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+      </inertial>
+    </link>
+
+    <joint name="joint_${prefix}_rocker_hip" type="continuous">
+      <parent link="base_link"/>
+      <child link="${prefix}_parallel_rocker"/>
+      <origin xyz="-0.035 ${servo_y_offset} -0.02" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <mimic joint="joint_${prefix}_hip_servo" multiplier="1.0" offset="0.0"/>
+      <dynamics damping="0.02" friction="0.01"/>
+    </joint>
+
+    <!-- ==================== 4. Lower Leg / Wheel Carrier Link ==================== -->
+    <link name="${prefix}_lower_leg">
+      <visual>
+        <origin xyz="0 0 ${-coupler_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.018 0.014 ${coupler_length}"/>
+        </geometry>
+        <material name="accent_blue"/>
+      </visual>
+      <!-- Horizontal crossbar for 4-bar linkage coupler -->
+      <visual>
+        <origin xyz="-0.0175 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.035 0.01 0.01"/>
+        </geometry>
+        <material name="dark_gray"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${-coupler_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.018 0.014 ${coupler_length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${-coupler_length/2}" rpy="0 0 0"/>
+        <mass value="0.06"/>
+        <inertia
+          ixx="${(0.06/12.0) * (0.014*0.014 + coupler_length*coupler_length)}"
+          ixy="0" ixz="0"
+          iyy="${(0.06/12.0) * (0.018*0.018 + coupler_length*coupler_length)}"
+          iyz="0"
+          izz="${(0.06/12.0) * (0.018*0.018 + 0.014*0.014)}"/>
+      </inertial>
+    </link>
+
+    <!-- 4-bar parallelogram knee joint keeping wheel carrier aligned during squatting -->
+    <joint name="joint_${prefix}_knee" type="continuous">
+      <parent link="${prefix}_upper_crank"/>
+      <child link="${prefix}_lower_leg"/>
+      <origin xyz="0 0 ${-crank_length}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <mimic joint="joint_${prefix}_hip_servo" multiplier="-1.0" offset="0.0"/>
+      <dynamics damping="0.03" friction="0.01"/>
+    </joint>
+
+    <!-- ==================== 5. Suspension / Spring Compliant Mount ==================== -->
+    <!-- Passively sprung suspension mount to absorb shock and reduce holding torque on MG995 -->
+    <link name="${prefix}_wheel_hub">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="0.015" length="0.02"/>
+        </geometry>
+        <material name="dark_gray"/>
+      </visual>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.03"/>
+        <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+      </inertial>
+    </link>
+
+    <joint name="joint_${prefix}_suspension" type="prismatic">
+      <parent link="${prefix}_lower_leg"/>
+      <child link="${prefix}_wheel_hub"/>
+      <origin xyz="0 ${reflect * 0.01} ${-coupler_length}" rpy="0 0 0"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="-0.01" upper="0.01" effort="50.0" velocity="1.0"/>
+      <dynamics damping="15.0" friction="0.5" spring_reference="0.0" spring_stiffness="2500.0"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

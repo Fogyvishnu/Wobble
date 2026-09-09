@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<robot name="wobble" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Arguments -->
+  <xacro:arg name="use_sim_time" default="true"/>
+
+  <!-- Include sub-assemblies -->
+  <xacro:include filename="$(find wobble_description)/urdf/materials.xacro"/>
+  <xacro:include filename="$(find wobble_description)/urdf/chassis.xacro"/>
+  <xacro:include filename="$(find wobble_description)/urdf/leg_4bar.xacro"/>
+  <xacro:include filename="$(find wobble_description)/urdf/wheels.xacro"/>
+  <xacro:include filename="$(find wobble_description)/urdf/ros2_control.xacro"/>
+  <xacro:include filename="$(find wobble_description)/urdf/gazebo.xacro"/>
+
+  <!-- Left 4-Bar Leg & Drive Wheel -->
+  <xacro:wobble_leg prefix="left" reflect="1"/>
+  <xacro:wobble_wheel prefix="left" reflect="1"/>
+
+  <!-- Right 4-Bar Leg & Drive Wheel -->
+  <xacro:wobble_leg prefix="right" reflect="-1"/>
+  <xacro:wobble_wheel prefix="right" reflect="-1"/>
+
+</robot>

@@ -1,0 +1,31 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 200  # 200 Hz high frequency control loop
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    left_wheel_effort_controller:
+      type: effort_controllers/JointGroupEffortController
+
+    right_wheel_effort_controller:
+      type: effort_controllers/JointGroupEffortController
+
+    hip_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+left_wheel_effort_controller:
+  ros__parameters:
+    joints:
+      - joint_left_wheel
+
+right_wheel_effort_controller:
+  ros__parameters:
+    joints:
+      - joint_right_wheel
+
+hip_position_controller:
+  ros__parameters:
+    joints:
+      - joint_left_hip_servo
+      - joint_right_hip_servo

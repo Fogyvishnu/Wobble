@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Torso & Electronics Properties -->
+  <xacro:property name="chassis_mass" value="0.75"/>
+  <xacro:property name="chassis_length" value="0.12"/>
+  <xacro:property name="chassis_width" value="0.15"/>
+  <xacro:property name="chassis_height" value="0.09"/>
+
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0.18" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Base Link / Torso Link -->
+  <link name="base_link">
+    <!-- Visual: Main Central Electronics & Battery Box -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+
+    <!-- Visual: Top Accent Plate (ESP32-S3 Housing) -->
+    <visual>
+      <origin xyz="0 0 ${chassis_height/2 + 0.005}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length * 0.8} ${chassis_width * 0.7} 0.01"/>
+      </geometry>
+      <material name="accent_blue"/>
+    </visual>
+
+    <!-- Collision -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+    </collision>
+
+    <!-- Inertial: Chassis Box Inertia -->
+    <inertial>
+      <origin xyz="0 0 0.01" rpy="0 0 0"/>
+      <mass value="${chassis_mass}"/>
+      <inertia
+        ixx="${(chassis_mass / 12.0) * (chassis_width*chassis_width + chassis_height*chassis_height)}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${(chassis_mass / 12.0) * (chassis_length*chassis_length + chassis_height*chassis_height)}"
+        iyz="0.0"
+        izz="${(chassis_mass / 12.0) * (chassis_length*chassis_length + chassis_width*chassis_width)}"/>
+    </inertial>
+  </link>
+
+  <!-- MPU6050 IMU Sensor Link & Mount -->
+  <link name="imu_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.02 0.004"/>
+      </geometry>
+      <material name="gold"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.005"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+    </inertial>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 0.02" rpy="0 0 0"/>
+  </joint>
+
+</robot>

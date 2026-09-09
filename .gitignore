@@ -1,0 +1,12 @@
+# Pixi environment
+.pixi/
+pixi.lock
+
+# ROS 2 Colcon build artifacts
+build/
+install/
+log/
+
+# Python cache
+__pycache__/
+*.pyc
