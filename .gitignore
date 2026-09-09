@@ -10,3 +10,6 @@ log/
 # Python cache
 __pycache__/
 *.pyc
+
+# Local private documentation
+GUIDE.md
