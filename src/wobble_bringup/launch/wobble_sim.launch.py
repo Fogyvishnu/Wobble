@@ -1,7 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -16,6 +16,7 @@ def generate_launch_description():
 
     use_rviz = LaunchConfiguration('rviz')
     headless = LaunchConfiguration('headless')
+    use_remote = LaunchConfiguration('remote')
 
     declare_use_rviz = DeclareLaunchArgument(
         'rviz',
@@ -28,6 +29,22 @@ def generate_launch_description():
         default_value='false',
         description='Run Gazebo in headless mode without GUI if true'
     )
+
+    declare_use_remote = DeclareLaunchArgument(
+        'remote',
+        default_value='true',
+        description='Start remote control GUI alongside Gazebo if true'
+    )
+
+    actions = [
+        SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb'),
+        declare_use_rviz,
+        declare_headless,
+        declare_use_remote
+    ]
+
+    if os.path.exists('/usr/lib/libdrm_amdgpu.so.1'):
+        actions.append(SetEnvironmentVariable('LD_PRELOAD', '/usr/lib/libdrm_amdgpu.so.1'))
 
     # 1. Gazebo Harmonic Simulation & Spawner
     sim_launch = IncludeLaunchDescription(
@@ -57,10 +74,20 @@ def generate_launch_description():
         output='screen'
     )
 
-    return LaunchDescription([
-        declare_use_rviz,
-        declare_headless,
+    # 4. Remote Control (WASD + O/P) GUI Node
+    remote_node = Node(
+        package='wobble_control',
+        executable='remote_control',
+        name='wobble_remote_control',
+        condition=IfCondition(use_remote),
+        output='screen'
+    )
+
+    actions.extend([
         sim_launch,
         control_launch,
-        rviz_node
+        rviz_node,
+        remote_node
     ])
+
+    return LaunchDescription(actions)

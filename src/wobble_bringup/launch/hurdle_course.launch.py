@@ -24,10 +24,12 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration('rviz')
     headless = LaunchConfiguration('headless')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    manual_mode = LaunchConfiguration('manual')
 
     declare_use_rviz = DeclareLaunchArgument('rviz', default_value='true', description='Start RViz2 if true')
     declare_headless = DeclareLaunchArgument('headless', default_value='false', description='Run Gazebo headless if true')
     declare_use_sim_time = DeclareLaunchArgument('use_sim_time', default_value='true', description='Use sim time')
+    declare_manual = DeclareLaunchArgument('manual', default_value='false', description='Enable manual remote control instead of autonomous navigator if true')
 
     # Environment variables for Wayland/X11 & Loopback Discovery
     conda_prefix = os.environ.get('CONDA_PREFIX', '')
@@ -41,7 +43,8 @@ def generate_launch_description():
         SetEnvironmentVariable('GZ_SIM_SYSTEM_PLUGIN_PATH', plugin_path),
         declare_use_rviz,
         declare_headless,
-        declare_use_sim_time
+        declare_use_sim_time,
+        declare_manual
     ]
 
     if os.path.exists('/usr/lib/libdrm_amdgpu.so.1'):
@@ -113,15 +116,24 @@ def generate_launch_description():
         name='wobble_balance_controller', parameters=[balance_params], output='screen'
     )
 
-    # 7. Autonomous Course Navigator Node
+    # 7. Autonomous Course Navigator Node (runs when manual:=false)
     navigator_node = Node(
         package='wobble_control', executable='course_navigator',
-        name='wobble_course_navigator', output='screen'
+        name='wobble_course_navigator', condition=UnlessCondition(manual_mode), output='screen'
+    )
+
+    # 7b. Remote Control Node (runs when manual:=true)
+    remote_node = Node(
+        package='wobble_control', executable='remote_control',
+        name='wobble_remote_control', condition=IfCondition(manual_mode), output='screen'
     )
 
     # Launch control nodes after all controllers are fully activated
     delay_control_nodes = RegisterEventHandler(
-        event_handler=OnProcessExit(target_action=spawner_node, on_exit=[balance_node, navigator_node])
+        event_handler=OnProcessExit(
+            target_action=spawner_node,
+            on_exit=[balance_node, navigator_node, remote_node]
+        )
     )
     actions.append(delay_control_nodes)
 
