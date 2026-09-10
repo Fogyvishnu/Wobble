@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'balance_controller = wobble_control.balance_controller:main',
+            'course_navigator = wobble_control.course_navigator:main',
         ],
     },
 )

@@ -6,28 +6,28 @@ wobble_balance_controller:
     # Inner Pitch Balance Loop
     # tau_bal = kp_pitch * (pitch - target_pitch) + kd_pitch * pitch_rate + ki_pitch * integral
     pitch_kp: 18.0
-    pitch_kd: 1.2
+    pitch_kd: 1.4
     pitch_ki: 0.8
-    pitch_integral_max: 0.5
+    pitch_integral_max: 0.4
     pitch_offset: 0.0      # Mechanical balance bias trimming (rad)
 
     # Outer Velocity / Position Loop
-    # target_pitch = kp_vel * (vel_cmd - measured_vel) + ki_vel * integral
-    vel_kp: 0.35
-    vel_ki: 0.08
-    vel_integral_max: 0.15
-    max_target_pitch: 0.25 # Maximum lean angle command in rad (~14 deg)
+    # target_pitch = pitch_offset - (vel_kp * vel_err + vel_ki * integral)
+    vel_kp: 0.12
+    vel_ki: 0.01
+    vel_integral_max: 0.04
+    max_target_pitch: 0.08 # Maximum lean angle command in rad (~4.6 deg) to preserve torque headroom
 
     # Yaw / Differential Steering Loop
     # delta_tau = kp_yaw * (yaw_cmd - measured_yaw_rate)
-    yaw_kp: 0.4
+    yaw_kp: 0.35
     yaw_kd: 0.02
 
     # Physical Robot Parameters
     wheel_radius: 0.035     # 70mm diameter wheels
     wheel_separation: 0.18  # Track width in meters
     max_wheel_torque: 1.5   # N*m limit per DC motor
-    fall_angle_threshold: 0.8 # Fall detection pitch cutoff rad (~45 deg)
+    fall_angle_threshold: 0.9 # Fall detection pitch cutoff rad (~51.5 deg)
 
     # 4-Bar Posture & MG995 Servos
     servo_limit_min: -1.570796  # -pi/2 rad

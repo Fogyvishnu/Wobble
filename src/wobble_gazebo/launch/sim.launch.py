@@ -92,7 +92,7 @@ def generate_launch_description():
             '-topic', 'robot_description',
             '-x', '0.0',
             '-y', '0.0',
-            '-z', '0.22', # Spawn upright above ground
+            '-z', '0.041', # Spawn upright with wheels touching ground
             '-R', '0.0',
             '-P', '0.0',
             '-Y', '0.0'

@@ -9,35 +9,18 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('wobble_control')
     params_file = os.path.join(pkg_share, 'config', 'balance_params.yaml')
 
-    # Spawner for joint_state_broadcaster
-    joint_state_broadcaster_spawner = Node(
+    # Consolidated Controller Spawner (Activates all controllers simultaneously)
+    spawner_node = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['joint_state_broadcaster', '--controller-manager-timeout', '30'],
-        output='screen'
-    )
-
-    # Spawner for left wheel effort controller
-    left_wheel_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['left_wheel_effort_controller', '--controller-manager-timeout', '30'],
-        output='screen'
-    )
-
-    # Spawner for right wheel effort controller
-    right_wheel_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['right_wheel_effort_controller', '--controller-manager-timeout', '30'],
-        output='screen'
-    )
-
-    # Spawner for hip servos position controller
-    hip_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['hip_position_controller', '--controller-manager-timeout', '30'],
+        arguments=[
+            'joint_state_broadcaster',
+            'left_wheel_effort_controller',
+            'right_wheel_effort_controller',
+            'hip_position_controller',
+            '--controller-manager-timeout', '30',
+            '--activate-as-group'
+        ],
         output='screen'
     )
 
@@ -53,15 +36,12 @@ def generate_launch_description():
     # Start balance node after controllers are active
     delay_balance_node = RegisterEventHandler(
         event_handler=OnProcessExit(
-            target_action=hip_controller_spawner,
+            target_action=spawner_node,
             on_exit=[balance_controller_node]
         )
     )
 
     return LaunchDescription([
-        joint_state_broadcaster_spawner,
-        left_wheel_controller_spawner,
-        right_wheel_controller_spawner,
-        hip_controller_spawner,
+        spawner_node,
         delay_balance_node
     ])

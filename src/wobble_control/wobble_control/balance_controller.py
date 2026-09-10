@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float64, Float64MultiArray, String
+from std_msgs.msg import Empty, Float64, Float64MultiArray, String
 
 
 class WobbleBalanceController(Node):
@@ -72,6 +72,8 @@ class WobbleBalanceController(Node):
 
         # Safety & status
         self.is_fallen = False
+        self.startup_grace = 1.0  # 1.0s grace period for initial upright settling
+        self.current_squat_angle = float(self.target_squat_angle)
 
         # Publishers
         self.left_wheel_pub = self.create_publisher(
@@ -134,8 +136,10 @@ class WobbleBalanceController(Node):
         # Desired squat angle in radians
         min_limit = self.get_parameter('servo_limit_min').value
         max_limit = self.get_parameter('servo_limit_max').value
-        self.target_squat_angle = max(min_limit, min(max_limit, msg.data))
-        self.get_logger().info(f"Squat posture command received: {self.target_squat_angle:.3f} rad")
+        new_angle = max(min_limit, min(max_limit, msg.data))
+        if abs(new_angle - self.target_squat_angle) > 0.02:
+            self.get_logger().info(f"Squat posture transition: {new_angle:.3f} rad")
+        self.target_squat_angle = new_angle
 
     def control_loop(self):
         # Command timeout watchdog: reset targets if no cmd_vel received in 0.5s
@@ -144,8 +148,11 @@ class WobbleBalanceController(Node):
             self.cmd_linear_vel = 0.0
             self.cmd_yaw_vel = 0.0
 
+        # Startup grace period before enabling fall detection
         fall_thresh = self.get_parameter('fall_angle_threshold').value
-        if abs(self.pitch) > fall_thresh:
+        if self.startup_grace > 0.0:
+            self.startup_grace -= self.dt
+        elif abs(self.pitch) > fall_thresh:
             if not self.is_fallen:
                 self.get_logger().warn(f"Fall detected! Pitch: {math.degrees(self.pitch):.1f} deg. Disabling motors.")
                 self.is_fallen = True
@@ -160,6 +167,22 @@ class WobbleBalanceController(Node):
             self.pitch_integral = 0.0
             self.vel_integral = 0.0
 
+        # Posture smoothing (slew-rate limit 0.8 rad/s) to prevent abrupt momentum transfer
+        max_rate = 0.8 * self.dt
+        diff = self.target_squat_angle - self.current_squat_angle
+        if abs(diff) > max_rate:
+            self.current_squat_angle += math.copysign(max_rate, diff)
+        else:
+            self.current_squat_angle = self.target_squat_angle
+
+        # Kinematic CoM compensation for 4-bar parallelogram linkage squatting:
+        # As linkage flexes, wheel axle translates relative to chassis CoM: dx = -crank * sin(squat)
+        crank_len = 0.08
+        coupler_len = 0.085
+        dx_com = -crank_len * math.sin(self.current_squat_angle)
+        dz_com = crank_len * math.cos(self.current_squat_angle) + coupler_len + 0.02
+        kinematic_pitch_bias = -math.atan2(dx_com, dz_com)
+
         # ========== 1. Outer Loop: Linear Velocity Control ==========
         vel_err = self.cmd_linear_vel - self.measured_linear_vel
         self.vel_integral += vel_err * self.dt
@@ -168,12 +191,12 @@ class WobbleBalanceController(Node):
 
         vel_kp = self.get_parameter('vel_kp').value
         vel_ki = self.get_parameter('vel_ki').value
-        pitch_offset = self.get_parameter('pitch_offset').value
+        pitch_offset = self.get_parameter('pitch_offset').value + kinematic_pitch_bias
         max_lean = self.get_parameter('max_target_pitch').value
 
-        # Desired pitch lean to accelerate or maintain speed
+        # Target pitch lean to accelerate or maintain speed
         target_pitch = pitch_offset - (vel_kp * vel_err + vel_ki * self.vel_integral)
-        target_pitch = max(-max_lean, min(max_lean, target_pitch))
+        target_pitch = max(kinematic_pitch_bias - max_lean, min(kinematic_pitch_bias + max_lean, target_pitch))
 
         # ========== 2. Inner Loop: Pitch Balancing ==========
         pitch_err = self.pitch - target_pitch
@@ -210,7 +233,7 @@ class WobbleBalanceController(Node):
             float(self.cmd_linear_vel),
             float(tau_left),
             float(tau_right),
-            float(self.target_squat_angle),
+            float(self.current_squat_angle),
             0.0 if self.is_fallen else 1.0
         ]
         self.telemetry_pub.publish(telemetry)
@@ -228,10 +251,10 @@ class WobbleBalanceController(Node):
         # 4-bar parallelogram linkage: knee angle = -hip angle
         msg = Float64MultiArray()
         msg.data = [
-            self.target_squat_angle,
-            -self.target_squat_angle,
-            self.target_squat_angle,
-            -self.target_squat_angle
+            self.current_squat_angle,
+            -self.current_squat_angle,
+            self.current_squat_angle,
+            -self.current_squat_angle
         ]
         self.hip_servo_pub.publish(msg)
 

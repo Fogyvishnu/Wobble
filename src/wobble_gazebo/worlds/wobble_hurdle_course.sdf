@@ -1,0 +1,323 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="wobble_hurdle_course">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- Essential Gazebo Harmonic plugins -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- Sun light -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 15 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <direction>-0.5 0.2 -0.8</direction>
+    </light>
+
+    <!-- Ground Plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.5</mu>
+                <mu2>1.5</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.25 0.28 0.32 1</ambient>
+            <diffuse>0.25 0.28 0.32 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Course Track Floor (12m x 2m asphalt lane) -->
+    <model name="course_track">
+      <static>true</static>
+      <pose>5.5 0 0.001 0 0 0</pose>
+      <link name="link">
+        <visual name="track_surface">
+          <geometry>
+            <box><size>13.0 2.2 0.002</size></box>
+          </geometry>
+          <material>
+            <ambient>0.15 0.16 0.18 1</ambient>
+            <diffuse>0.15 0.16 0.18 1</diffuse>
+          </material>
+        </visual>
+        <!-- Center dashed line -->
+        <visual name="center_line">
+          <pose>0 0 0.002 0 0 0</pose>
+          <geometry>
+            <box><size>12.0 0.05 0.002</size></box>
+          </geometry>
+          <material>
+            <ambient>0.9 0.8 0.1 1</ambient>
+            <diffuse>0.9 0.8 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Boundary Rails (Left & Right curbs) -->
+    <model name="boundary_rails">
+      <static>true</static>
+      <link name="link">
+        <collision name="rail_left_col">
+          <pose>5.5 1.15 0.05 0 0 0</pose>
+          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+        </collision>
+        <visual name="rail_left_vis">
+          <pose>5.5 1.15 0.05 0 0 0</pose>
+          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+          <material>
+            <ambient>0.8 0.2 0.2 1</ambient>
+            <diffuse>0.8 0.2 0.2 1</diffuse>
+          </material>
+        </visual>
+
+        <collision name="rail_right_col">
+          <pose>5.5 -1.15 0.05 0 0 0</pose>
+          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+        </collision>
+        <visual name="rail_right_vis">
+          <pose>5.5 -1.15 0.05 0 0 0</pose>
+          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+          <material>
+            <ambient>0.8 0.2 0.2 1</ambient>
+            <diffuse>0.8 0.2 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ==================== HURDLE 1: Low Overhead Clearance Gate (Squat Challenge) ==================== -->
+    <!-- Clearance height is 0.255m (25.5 cm). Robot standing height is 0.265m. Must squat to pass! -->
+    <model name="low_clearance_hurdle">
+      <static>true</static>
+      <pose>2.8 0 0 0 0 0</pose>
+      <link name="link">
+        <!-- Left Post -->
+        <collision name="left_post_col">
+          <pose>0 0.5 0.25 0 0 0</pose>
+          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
+        </collision>
+        <visual name="left_post_vis">
+          <pose>0 0.5 0.25 0 0 0</pose>
+          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
+          <material>
+            <ambient>0.9 0.1 0.1 1</ambient>
+            <diffuse>0.9 0.1 0.1 1</diffuse>
+          </material>
+        </visual>
+
+        <!-- Right Post -->
+        <collision name="right_post_col">
+          <pose>0 -0.5 0.25 0 0 0</pose>
+          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
+        </collision>
+        <visual name="right_post_vis">
+          <pose>0 -0.5 0.25 0 0 0</pose>
+          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
+          <material>
+            <ambient>0.9 0.1 0.1 1</ambient>
+            <diffuse>0.9 0.1 0.1 1</diffuse>
+          </material>
+        </visual>
+
+        <!-- Overhead Crossbar at Z = 0.275m (Lower edge is 0.255m above ground) -->
+        <collision name="crossbar_col">
+          <pose>0 0 0.275 0 0 0</pose>
+          <geometry><box><size>0.12 1.04 0.04</size></box></geometry>
+        </collision>
+        <visual name="crossbar_vis">
+          <pose>0 0 0.275 0 0 0</pose>
+          <geometry><box><size>0.12 1.04 0.04</size></box></geometry>
+          <material>
+            <ambient>0.95 0.5 0.0 1</ambient>
+            <diffuse>0.95 0.5 0.0 1</diffuse>
+          </material>
+        </visual>
+
+        <!-- Warning Sign Banner -->
+        <visual name="sign_banner">
+          <pose>0 0 0.32 0 0 0</pose>
+          <geometry><box><size>0.02 0.8 0.05</size></box></geometry>
+          <material>
+            <ambient>0.9 0.9 0.1 1</ambient>
+            <diffuse>0.9 0.9 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ==================== HURDLE 2: Slalom Bollards (Steering & Balance Challenge) ==================== -->
+    <!-- Bollard 1 (offset left) -->
+    <model name="slalom_bollard_1">
+      <static>true</static>
+      <pose>4.8 0.22 0.2 0 0 0</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
+          <material>
+            <ambient>0.1 0.6 0.9 1</ambient>
+            <diffuse>0.1 0.6 0.9 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Bollard 2 (offset right) -->
+    <model name="slalom_bollard_2">
+      <static>true</static>
+      <pose>6.0 -0.22 0.2 0 0 0</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
+          <material>
+            <ambient>0.1 0.6 0.9 1</ambient>
+            <diffuse>0.1 0.6 0.9 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Bollard 3 (offset left) -->
+    <model name="slalom_bollard_3">
+      <static>true</static>
+      <pose>7.2 0.20 0.2 0 0 0</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
+          <material>
+            <ambient>0.1 0.6 0.9 1</ambient>
+            <diffuse>0.1 0.6 0.9 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ==================== HURDLE 3: Terrain Speed Bumps (Suspension Shock Challenge) ==================== -->
+    <model name="speed_bump_1">
+      <static>true</static>
+      <pose>8.7 0 0.007 0 0 0</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry><box><size>0.08 1.8 0.014</size></box></geometry>
+          <surface>
+            <friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.08 1.8 0.014</size></box></geometry>
+          <material>
+            <ambient>0.95 0.8 0.1 1</ambient>
+            <diffuse>0.95 0.8 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="speed_bump_2">
+      <static>true</static>
+      <pose>9.3 0 0.009 0 0 0</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry><box><size>0.10 1.8 0.018</size></box></geometry>
+          <surface>
+            <friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.10 1.8 0.018</size></box></geometry>
+          <material>
+            <ambient>0.95 0.8 0.1 1</ambient>
+            <diffuse>0.95 0.8 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ==================== FINISH LINE ARCH ==================== -->
+    <model name="finish_arch">
+      <static>true</static>
+      <pose>11.0 0 0 0 0 0</pose>
+      <link name="link">
+        <!-- Left Pillar -->
+        <visual name="pillar_left">
+          <pose>0 0.7 0.35 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>0.7</length></cylinder></geometry>
+          <material>
+            <ambient>0.1 0.8 0.3 1</ambient>
+            <diffuse>0.1 0.8 0.3 1</diffuse>
+          </material>
+        </visual>
+        <!-- Right Pillar -->
+        <visual name="pillar_right">
+          <pose>0 -0.7 0.35 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>0.7</length></cylinder></geometry>
+          <material>
+            <ambient>0.1 0.8 0.3 1</ambient>
+            <diffuse>0.1 0.8 0.3 1</diffuse>
+          </material>
+        </visual>
+        <!-- Overhead Banner -->
+        <visual name="finish_banner">
+          <pose>0 0 0.7 0 0 0</pose>
+          <geometry><box><size>0.05 1.5 0.15</size></box></geometry>
+          <material>
+            <ambient>0.1 0.8 0.3 1</ambient>
+            <diffuse>0.1 0.8 0.3 1</diffuse>
+          </material>
+        </visual>
+        <!-- Finish Line Strip on Ground -->
+        <visual name="finish_line_ground">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><box><size>0.2 1.4 0.002</size></box></geometry>
+          <material>
+            <ambient>1.0 1.0 1.0 1</ambient>
+            <diffuse>1.0 1.0 1.0 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
