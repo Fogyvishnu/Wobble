@@ -8,11 +8,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    pkg_wobble_gazebo = get_package_share_directory('wobble_gazebo')
-    pkg_wobble_control = get_package_share_directory('wobble_control')
-    pkg_wobble_description = get_package_share_directory('wobble_description')
-
-    rviz_config_path = os.path.join(pkg_wobble_description, 'rviz', 'wobble.rviz')
+    pkg_wobble_bringup = get_package_share_directory('wobble_bringup')
 
     use_rviz = LaunchConfiguration('rviz')
     headless = LaunchConfiguration('headless')
@@ -36,58 +32,21 @@ def generate_launch_description():
         description='Start remote control GUI alongside Gazebo if true'
     )
 
-    actions = [
-        SetEnvironmentVariable('QT_QPA_PLATFORM', 'xcb'),
-        declare_use_rviz,
-        declare_headless,
-        declare_use_remote
-    ]
-
-    if os.path.exists('/usr/lib/libdrm_amdgpu.so.1'):
-        actions.append(SetEnvironmentVariable('LD_PRELOAD', '/usr/lib/libdrm_amdgpu.so.1'))
-
-    # 1. Gazebo Harmonic Simulation & Spawner
-    sim_launch = IncludeLaunchDescription(
+    # Master hurdle course launch with manual remote control enabled by default
+    hurdle_course_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_wobble_gazebo, 'launch', 'sim.launch.py')
+            os.path.join(pkg_wobble_bringup, 'launch', 'hurdle_course.launch.py')
         ),
         launch_arguments={
-            'headless': headless
+            'rviz': use_rviz,
+            'headless': headless,
+            'manual': use_remote
         }.items()
     )
 
-    # 2. Control System & Balance Node
-    control_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_wobble_control, 'launch', 'control.launch.py')
-        )
-    )
-
-    # 3. RViz Visualization
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', rviz_config_path],
-        parameters=[{'use_sim_time': True}],
-        condition=IfCondition(use_rviz),
-        output='screen'
-    )
-
-    # 4. Remote Control (WASD + O/P) GUI Node
-    remote_node = Node(
-        package='wobble_control',
-        executable='remote_control',
-        name='wobble_remote_control',
-        condition=IfCondition(use_remote),
-        output='screen'
-    )
-
-    actions.extend([
-        sim_launch,
-        control_launch,
-        rviz_node,
-        remote_node
+    return LaunchDescription([
+        declare_use_rviz,
+        declare_headless,
+        declare_use_remote,
+        hurdle_course_launch
     ])
-
-    return LaunchDescription(actions)

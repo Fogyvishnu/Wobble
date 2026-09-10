@@ -94,6 +94,8 @@ class WobbleBalanceController(Node):
             Twist, '/cmd_vel', self.cmd_vel_callback, 10)
         self.squat_sub = self.create_subscription(
             Float64, '/cmd_squat', self.squat_callback, 10)
+        self.reset_sub = self.create_subscription(
+            Empty, '/wobble/reset', self.reset_callback, 10)
 
         # High-frequency control loop timer
         self.timer = self.create_timer(self.dt, self.control_loop)
@@ -156,9 +158,10 @@ class WobbleBalanceController(Node):
             if not self.is_fallen:
                 self.get_logger().warn(f"Fall detected! Pitch: {math.degrees(self.pitch):.1f} deg. Disabling motors.")
                 self.is_fallen = True
-            # Zero motor output for safety
+            # Zero wheel torque for safety, keep posture active, and publish fallen telemetry
             self.publish_wheel_efforts(0.0, 0.0)
             self.publish_posture()
+            self.publish_telemetry(0.0, 0.0)
             return
 
         if self.is_fallen and abs(self.pitch) < (fall_thresh * 0.4):
@@ -223,7 +226,20 @@ class WobbleBalanceController(Node):
         # Send actuator commands
         self.publish_wheel_efforts(tau_left, tau_right)
         self.publish_posture()
+        self.publish_telemetry(tau_left, tau_right)
 
+    def reset_callback(self, msg: Empty):
+        self.get_logger().info("Reset command received. Re-enabling balance controller.")
+        self.is_fallen = False
+        self.startup_grace = 2.0
+        self.pitch_integral = 0.0
+        self.vel_integral = 0.0
+        self.cmd_linear_vel = 0.0
+        self.cmd_yaw_vel = 0.0
+        self.target_squat_angle = 0.0
+        self.current_squat_angle = 0.0
+
+    def publish_telemetry(self, tau_left: float = 0.0, tau_right: float = 0.0):
         # Telemetry: [pitch, pitch_rate, linear_vel, cmd_vel, tau_L, tau_R, squat_angle, status]
         telemetry = Float64MultiArray()
         telemetry.data = [

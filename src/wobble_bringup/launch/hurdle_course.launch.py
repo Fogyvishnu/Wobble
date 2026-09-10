@@ -1,4 +1,5 @@
 import os
+import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler
@@ -32,10 +33,16 @@ def generate_launch_description():
     declare_manual = DeclareLaunchArgument('manual', default_value='false', description='Enable manual remote control instead of autonomous navigator if true')
 
     # Environment variables for Wayland/X11 & Loopback Discovery
+    pixi_lib = '/home/vish/PROJECTS/Wobble/.pixi/envs/default/lib'
+    python_prefix_lib = os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'lib')
     conda_prefix = os.environ.get('CONDA_PREFIX', '')
     conda_lib = os.path.join(conda_prefix, 'lib') if conda_prefix else ''
     existing_plugin = os.environ.get('GZ_SIM_SYSTEM_PLUGIN_PATH', '')
-    plugin_path = f"{conda_lib}:{existing_plugin}" if conda_lib else existing_plugin
+
+    valid_libs = [d for d in [pixi_lib, python_prefix_lib, conda_lib] if os.path.isdir(d)]
+    if existing_plugin:
+        valid_libs.append(existing_plugin)
+    plugin_path = ':'.join(valid_libs)
 
     actions = [
         SetEnvironmentVariable('GZ_IP', '127.0.0.1'),

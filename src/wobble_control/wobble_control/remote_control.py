@@ -5,7 +5,7 @@ Author: Antigravity Agent for Project Wobble
 Description:
     Interactive remote control interface running alongside Gazebo Harmonic.
     Supports WASD for omnidirectional movement, O/P for squat and stand postures,
-    Space for emergency braking, with live balance telemetry display.
+    Space for emergency braking, R for reset/standup, with live balance telemetry display.
     Includes a responsive PyQt5 GUI with key-hold detection and automatic fallback
     to interactive terminal CLI mode.
 """
@@ -15,22 +15,21 @@ import sys
 import math
 import time
 import argparse
-import threading
 
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float64, Float64MultiArray
+from std_msgs.msg import Empty, Float64, Float64MultiArray
 
 # Check if GUI is supported
 HAS_PYQT = False
 try:
-    from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject
+    from PyQt5.QtCore import Qt, QTimer
     from PyQt5.QtWidgets import (
         QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-        QGridLayout, QPushButton, QLabel, QSlider, QFrame, QProgressBar
+        QGridLayout, QPushButton, QLabel, QSlider, QFrame
     )
-    from PyQt5.QtGui import QFont, QColor, QPalette, QKeyEvent
+    from PyQt5.QtGui import QFont, QKeyEvent
     HAS_PYQT = True
 except ImportError:
     HAS_PYQT = False
@@ -45,22 +44,27 @@ class RemoteControlRosNode(Node):
         # Publishers
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.cmd_squat_pub = self.create_publisher(Float64, '/cmd_squat', 10)
+        self.reset_pub = self.create_publisher(Empty, '/wobble/reset', 10)
 
-        # Telemetry Subscriber
+        # Telemetry Subscriber (from Wobble balance controller)
         self.telemetry_sub = self.create_subscription(
             Float64MultiArray,
-            '/wobble_telemetry',
+            '/wobble/telemetry',
             self.telemetry_callback,
             10
         )
 
         # Telemetry state
         self.pitch_deg = 0.0
+        self.pitch_rate = 0.0
         self.measured_vel = 0.0
         self.commanded_vel = 0.0
+        self.tau_left = 0.0
+        self.tau_right = 0.0
         self.squat_angle = 0.0
-        self.is_upright = True
-        self.last_telemetry_time = self.get_clock().now()
+        self.is_upright = False
+        self.has_telemetry = False
+        self.last_telemetry_time = 0.0
 
         # Motion targets
         self.target_linear_vel = 0.0
@@ -69,7 +73,7 @@ class RemoteControlRosNode(Node):
         self.current_angular_vel = 0.0
 
         # Motion tuning limits
-        self.max_linear_vel = 0.40   # m/s
+        self.max_linear_vel = 0.35   # m/s
         self.max_angular_vel = 0.85  # rad/s
         self.linear_accel = 0.80     # m/s^2 ramping
         self.angular_accel = 2.00    # rad/s^2 ramping
@@ -84,13 +88,18 @@ class RemoteControlRosNode(Node):
         self.pub_timer = self.create_timer(self.timer_period, self.publish_motion_loop)
 
     def telemetry_callback(self, msg: Float64MultiArray):
-        if len(msg.data) >= 7:
-            self.pitch_deg = msg.data[0]
-            self.measured_vel = msg.data[1]
-            self.commanded_vel = msg.data[2]
-            self.squat_angle = msg.data[5]
-            self.is_upright = (msg.data[6] > 0.5)
-            self.last_telemetry_time = self.get_clock().now()
+        # Format: [pitch, pitch_rate, linear_vel, cmd_vel, tau_L, tau_R, squat_angle, status]
+        if len(msg.data) >= 8:
+            self.pitch_deg = math.degrees(msg.data[0])
+            self.pitch_rate = msg.data[1]
+            self.measured_vel = msg.data[2]
+            self.commanded_vel = msg.data[3]
+            self.tau_left = msg.data[4]
+            self.tau_right = msg.data[5]
+            self.squat_angle = msg.data[6]
+            self.is_upright = (msg.data[7] > 0.5)
+            self.has_telemetry = True
+            self.last_telemetry_time = time.time()
 
     def set_motion_intent(self, forward: float, turn: float):
         """Set normalized directional intent: forward in [-1, 1], turn in [-1, 1]."""
@@ -122,6 +131,14 @@ class RemoteControlRosNode(Node):
         self.cmd_squat_pub.publish(msg)
         self.get_logger().info(f"Posture command: STAND ({self.stand_target_angle:.2f} rad)")
 
+    def command_reset(self):
+        """Send manual reset to re-enable balancing and posture."""
+        self.emergency_stop()
+        self.command_stand()
+        msg = Empty()
+        self.reset_pub.publish(msg)
+        self.get_logger().info("Sent RESET to Wobble balance controller.")
+
     def set_custom_squat_angle(self, angle_rad: float):
         """Command an arbitrary squat angle."""
         clamped = max(-1.50, min(1.50, angle_rad))
@@ -132,7 +149,10 @@ class RemoteControlRosNode(Node):
 
     def publish_motion_loop(self):
         """Ramps velocities smoothly and publishes Twist commands."""
-        # Slew-rate acceleration ramping
+        # Only publish motion if connected or if actively commanding non-zero target
+        if not self.has_telemetry and abs(self.target_linear_vel) < 0.01 and abs(self.target_angular_vel) < 0.01:
+            return
+
         dt = self.timer_period
 
         # Linear velocity ramp
@@ -165,10 +185,7 @@ if HAS_PYQT:
         def __init__(self, ros_node: RemoteControlRosNode):
             super().__init__()
             self.node = ros_node
-
-            # Key tracking set to support multiple simultaneous keys (e.g. W + A)
             self.active_keys = set()
-
             self.init_ui()
 
             # Qt timer to process ROS2 messages and update UI at 50 Hz
@@ -178,7 +195,7 @@ if HAS_PYQT:
 
         def init_ui(self):
             self.setWindowTitle("Wobble Remote Controller")
-            self.setFixedSize(440, 620)
+            self.setFixedSize(450, 660)
             self.setStyleSheet("""
                 QMainWindow {
                     background-color: #11111b;
@@ -218,10 +235,6 @@ if HAS_PYQT:
                     background-color: #a6e3a1;
                     color: #11111b;
                 }
-                QPushButton#stopBtn[active="true"] {
-                    background-color: #f38ba8;
-                    color: #11111b;
-                }
                 QSlider::groove:horizontal {
                     height: 6px;
                     background: #313244;
@@ -244,7 +257,7 @@ if HAS_PYQT:
             self.setCentralWidget(central)
             main_layout = QVBoxLayout(central)
             main_layout.setContentsMargins(16, 14, 16, 14)
-            main_layout.setSpacing(12)
+            main_layout.setSpacing(10)
 
             # Header
             header_layout = QHBoxLayout()
@@ -253,9 +266,9 @@ if HAS_PYQT:
             title_lbl.setStyleSheet("color: #89b4fa; letter-spacing: 1px;")
             header_layout.addWidget(title_lbl)
 
-            self.status_badge = QLabel("READY")
+            self.status_badge = QLabel("CONNECTING...")
             self.status_badge.setFont(QFont("Arial", 10, QFont.Bold))
-            self.status_badge.setStyleSheet("background: #a6e3a1; color: #11111b; border-radius: 4px; padding: 3px 8px;")
+            self.status_badge.setStyleSheet("background: #585b70; color: #cdd6f4; border-radius: 4px; padding: 3px 8px;")
             header_layout.addWidget(self.status_badge, alignment=Qt.AlignRight)
             main_layout.addLayout(header_layout)
 
@@ -266,25 +279,25 @@ if HAS_PYQT:
             t_layout.setContentsMargins(12, 10, 12, 10)
 
             t_layout.addWidget(QLabel("Pitch Tilt:"), 0, 0)
-            self.pitch_val = QLabel("0.0°")
+            self.pitch_val = QLabel("--.-°")
             self.pitch_val.setFont(QFont("Monospace", 11, QFont.Bold))
-            self.pitch_val.setStyleSheet("color: #a6e3a1;")
+            self.pitch_val.setStyleSheet("color: #6c7086;")
             t_layout.addWidget(self.pitch_val, 0, 1)
 
             t_layout.addWidget(QLabel("Linear Speed:"), 0, 2)
-            self.speed_val = QLabel("0.00 m/s")
+            self.speed_val = QLabel("--.-- m/s")
             self.speed_val.setFont(QFont("Monospace", 11, QFont.Bold))
             t_layout.addWidget(self.speed_val, 0, 3)
 
             t_layout.addWidget(QLabel("Posture Angle:"), 1, 0)
-            self.posture_val = QLabel("0.00 rad (Stand)")
+            self.posture_val = QLabel("0.00 rad")
             self.posture_val.setFont(QFont("Monospace", 11, QFont.Bold))
             t_layout.addWidget(self.posture_val, 1, 1)
 
             t_layout.addWidget(QLabel("Balance State:"), 1, 2)
-            self.balance_state = QLabel("BALANCED")
+            self.balance_state = QLabel("WAITING")
             self.balance_state.setFont(QFont("Arial", 10, QFont.Bold))
-            self.balance_state.setStyleSheet("color: #a6e3a1;")
+            self.balance_state.setStyleSheet("color: #6c7086;")
             t_layout.addWidget(self.balance_state, 1, 3)
 
             main_layout.addWidget(telemetry_card)
@@ -304,19 +317,19 @@ if HAS_PYQT:
             grid.setSpacing(8)
 
             self.btn_w = QPushButton("▲ W\nForward")
-            self.btn_w.setFixedSize(100, 60)
+            self.btn_w.setFixedSize(100, 58)
             grid.addWidget(self.btn_w, 0, 1)
 
             self.btn_a = QPushButton("◀ A\nTurn Left")
-            self.btn_a.setFixedSize(100, 60)
+            self.btn_a.setFixedSize(100, 58)
             grid.addWidget(self.btn_a, 1, 0)
 
             self.btn_s = QPushButton("▼ S\nBackward")
-            self.btn_s.setFixedSize(100, 60)
+            self.btn_s.setFixedSize(100, 58)
             grid.addWidget(self.btn_s, 1, 1)
 
             self.btn_d = QPushButton("▶ D\nTurn Right")
-            self.btn_d.setFixedSize(100, 60)
+            self.btn_d.setFixedSize(100, 58)
             grid.addWidget(self.btn_d, 1, 2)
 
             w_layout.addLayout(grid)
@@ -333,13 +346,13 @@ if HAS_PYQT:
 
             main_layout.addWidget(wasd_card)
 
-            # Posture Controls Card (O / P / Space)
+            # Posture Controls Card (O / P / Space / R)
             posture_card = QFrame()
             posture_card.setObjectName("card")
             p_layout = QVBoxLayout(posture_card)
             p_layout.setContentsMargins(12, 10, 12, 10)
 
-            posture_hdr = QLabel("🦿 4-BAR POSTURE CONTROL")
+            posture_hdr = QLabel("🦿 POSTURE & ACTION BUTTONS")
             posture_hdr.setFont(QFont("Arial", 11, QFont.Bold))
             posture_hdr.setStyleSheet("color: #bac2de;")
             p_layout.addWidget(posture_hdr, alignment=Qt.AlignCenter)
@@ -349,36 +362,55 @@ if HAS_PYQT:
 
             self.btn_squat = QPushButton("[O] SQUAT\n-0.42 rad (24°)")
             self.btn_squat.setObjectName("squatBtn")
-            self.btn_squat.setFixedHeight(50)
+            self.btn_squat.setFixedHeight(48)
             self.btn_squat.clicked.connect(self.on_squat_clicked)
             p_btn_layout.addWidget(self.btn_squat)
 
             self.btn_stand = QPushButton("[P] STAND\n0.00 rad (0°)")
             self.btn_stand.setObjectName("standBtn")
-            self.btn_stand.setFixedHeight(50)
+            self.btn_stand.setFixedHeight(48)
             self.btn_stand.clicked.connect(self.on_stand_clicked)
             p_btn_layout.addWidget(self.btn_stand)
 
             p_layout.addLayout(p_btn_layout)
 
-            # Emergency Stop Button
-            self.btn_stop = QPushButton("[SPACE] EMERGENCY BRAKE / STOP")
-            self.btn_stop.setObjectName("stopBtn")
-            self.btn_stop.setFixedHeight(40)
+            # Action Bar: Space (Brake) + R (Reset)
+            act_layout = QHBoxLayout()
+            act_layout.setSpacing(10)
+
+            self.btn_stop = QPushButton("[SPACE] BRAKE")
+            self.btn_stop.setFixedHeight(38)
             self.btn_stop.setStyleSheet("""
-                QPushButton#stopBtn {
+                QPushButton {
                     background-color: #452834;
                     color: #f38ba8;
                     border: 1px solid #f38ba8;
                 }
-                QPushButton#stopBtn:hover {
+                QPushButton:hover {
                     background-color: #f38ba8;
                     color: #11111b;
                 }
             """)
             self.btn_stop.clicked.connect(self.on_stop_clicked)
-            p_layout.addWidget(self.btn_stop)
+            act_layout.addWidget(self.btn_stop, 3)
 
+            self.btn_reset = QPushButton("[R] RESET")
+            self.btn_reset.setFixedHeight(38)
+            self.btn_reset.setStyleSheet("""
+                QPushButton {
+                    background-color: #2e3846;
+                    color: #89b4fa;
+                    border: 1px solid #89b4fa;
+                }
+                QPushButton:hover {
+                    background-color: #89b4fa;
+                    color: #11111b;
+                }
+            """)
+            self.btn_reset.clicked.connect(self.on_reset_clicked)
+            act_layout.addWidget(self.btn_reset, 2)
+
+            p_layout.addLayout(act_layout)
             main_layout.addWidget(posture_card)
 
             # Speed Tuning Slider
@@ -398,7 +430,7 @@ if HAS_PYQT:
             main_layout.addWidget(speed_card)
 
             # Instructions footer
-            footer = QLabel("⌨️ Keyboard: Focus window and hold W/A/S/D to move, O to squat, P to stand, Space to stop.")
+            footer = QLabel("⌨️ Hold W/A/S/D to drive | [O] Squat | [P] Stand | [Space] Brake | [R] Reset")
             footer.setFont(QFont("Arial", 9))
             footer.setStyleSheet("color: #6c7086;")
             footer.setWordWrap(True)
@@ -441,6 +473,11 @@ if HAS_PYQT:
             self.node.emergency_stop()
             self.update_motion_from_keys()
 
+        def on_reset_clicked(self):
+            self.active_keys.clear()
+            self.node.command_reset()
+            self.update_motion_from_keys()
+
         def keyPressEvent(self, event: QKeyEvent):
             key = event.key()
             if key == Qt.Key_W:
@@ -455,6 +492,8 @@ if HAS_PYQT:
                 self.on_squat_clicked()
             elif key == Qt.Key_P:
                 self.on_stand_clicked()
+            elif key == Qt.Key_R:
+                self.on_reset_clicked()
             elif key == Qt.Key_Space:
                 self.on_stop_clicked()
             elif key == Qt.Key_Escape or key == Qt.Key_Q:
@@ -515,6 +554,18 @@ if HAS_PYQT:
             """Processes ROS 2 callbacks and updates GUI indicators."""
             rclpy.spin_once(self.node, timeout_sec=0)
 
+            # Connection check (1.5s timeout)
+            is_connected = self.node.has_telemetry and (time.time() - self.node.last_telemetry_time < 1.5)
+
+            if not is_connected:
+                self.status_badge.setText("CONNECTING...")
+                self.status_badge.setStyleSheet("background: #585b70; color: #cdd6f4; border-radius: 4px; padding: 3px 8px;")
+                self.balance_state.setText("NO LINK")
+                self.balance_state.setStyleSheet("color: #6c7086;")
+                self.pitch_val.setText("--.-°")
+                self.speed_val.setText("--.-- m/s")
+                return
+
             # Update Telemetry labels
             pitch = self.node.pitch_deg
             self.pitch_val.setText(f"{pitch:+.1f}°")
@@ -538,7 +589,7 @@ if HAS_PYQT:
             if not self.node.is_upright:
                 self.balance_state.setText("FALLEN")
                 self.balance_state.setStyleSheet("color: #f38ba8;")
-                self.status_badge.setText("FALLEN")
+                self.status_badge.setText("FALLEN (Press R)")
                 self.status_badge.setStyleSheet("background: #f38ba8; color: #11111b; border-radius: 4px; padding: 3px 8px;")
             elif abs(self.node.current_linear_vel) > 0.05 or abs(self.node.current_angular_vel) > 0.05:
                 self.balance_state.setText("DRIVING")
@@ -561,18 +612,19 @@ def run_cli_mode(ros_node: RemoteControlRosNode):
     old_settings = termios.tcgetattr(sys.stdin)
     tty.setcbreak(sys.stdin.fileno())
 
-    print("\n" + "=" * 58)
+    print("\n" + "=" * 60)
     print("       🤖 WOBBLE ROBOT TERMINAL REMOTE CONTROL")
-    print("=" * 58)
+    print("=" * 60)
     print("  Controls:")
     print("    [W] / [S]        : Drive Forward / Backward")
     print("    [A] / [D]        : Turn Left / Right")
     print("    [O]              : Squat (-0.42 rad / 24°)")
     print("    [P]              : Stand (0.00 rad / Upright)")
     print("    [SPACE] or [X]   : Stop / Brake")
+    print("    [R]              : Reset / Standup")
     print("    [+] / [-]        : Increase / Decrease Speed")
     print("    [Q] or [Ctrl+C]  : Quit Controller")
-    print("=" * 58 + "\n")
+    print("=" * 60 + "\n")
 
     current_forward = 0.0
     current_turn = 0.0
@@ -602,6 +654,10 @@ def run_cli_mode(ros_node: RemoteControlRosNode):
                     ros_node.command_squat()
                 elif ch in ['p', 'P']:
                     ros_node.command_stand()
+                elif ch in ['r', 'R']:
+                    current_forward = 0.0
+                    current_turn = 0.0
+                    ros_node.command_reset()
                 elif ch == '+':
                     ros_node.max_linear_vel = min(0.8, ros_node.max_linear_vel + 0.05)
                     print(f"\n[Speed Set] Max: {ros_node.max_linear_vel:.2f} m/s")
@@ -615,14 +671,18 @@ def run_cli_mode(ros_node: RemoteControlRosNode):
                 ros_node.set_motion_intent(current_forward, current_turn)
 
             # Print status line
-            posture_str = "SQUAT" if ros_node.current_posture_cmd < -0.2 else "STAND"
-            state_str = "OK" if ros_node.is_upright else "FALLEN!"
-            sys.stdout.write(
-                f"\r[Wobble] Pitch: {ros_node.pitch_deg:+5.1f}° | "
-                f"Vel: {ros_node.measured_vel:+4.2f} m/s | "
-                f"Target: {ros_node.current_linear_vel:+4.2f} m/s | "
-                f"Posture: {posture_str} | Status: {state_str}   "
-            )
+            is_connected = ros_node.has_telemetry and (time.time() - ros_node.last_telemetry_time < 1.5)
+            if is_connected:
+                posture_str = "SQUAT" if ros_node.current_posture_cmd < -0.2 else "STAND"
+                state_str = "BALANCED" if ros_node.is_upright else "FALLEN"
+                sys.stdout.write(
+                    f"\r[Wobble] Pitch: {ros_node.pitch_deg:+5.1f}° | "
+                    f"Vel: {ros_node.measured_vel:+4.2f} m/s | "
+                    f"Cmd: {ros_node.current_linear_vel:+4.2f} m/s | "
+                    f"Posture: {posture_str} | Status: {state_str}   "
+                )
+            else:
+                sys.stdout.write("\r[Wobble] Waiting for connection / balance controller...   ")
             sys.stdout.flush()
 
     finally:
@@ -643,7 +703,6 @@ def main(args=None):
 
     if use_gui:
         try:
-            # Set XCB platform for Linux Wayland compatibility if not set
             if 'QT_QPA_PLATFORM' not in os.environ:
                 os.environ['QT_QPA_PLATFORM'] = 'xcb'
 

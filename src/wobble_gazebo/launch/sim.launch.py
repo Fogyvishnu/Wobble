@@ -1,4 +1,5 @@
 import os
+import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
@@ -13,7 +14,8 @@ def generate_launch_description():
     pkg_wobble_gazebo = get_package_share_directory('wobble_gazebo')
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
 
-    world_path = os.path.join(pkg_wobble_gazebo, 'worlds', 'wobble_world.sdf')
+    world_file = LaunchConfiguration('world')
+    world_path = os.path.join(pkg_wobble_gazebo, 'worlds', 'wobble_hurdle_course.sdf')
     bridge_config = os.path.join(pkg_wobble_gazebo, 'config', 'ros_gz_bridge.yaml')
     xacro_file = os.path.join(pkg_wobble_description, 'urdf', 'wobble.urdf.xacro')
 
@@ -32,11 +34,23 @@ def generate_launch_description():
         description='Run Gazebo in headless mode without GUI if true'
     )
 
+    declare_world = DeclareLaunchArgument(
+        'world',
+        default_value='wobble_hurdle_course.sdf',
+        description='World file to load in wobble_gazebo/worlds'
+    )
+
     # 1. Critical Environment Variables for Linux / Wayland & Network Discovery
+    pixi_lib = '/home/vish/PROJECTS/Wobble/.pixi/envs/default/lib'
+    python_prefix_lib = os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'lib')
     conda_prefix = os.environ.get('CONDA_PREFIX', '')
     conda_lib = os.path.join(conda_prefix, 'lib') if conda_prefix else ''
     existing_plugin_path = os.environ.get('GZ_SIM_SYSTEM_PLUGIN_PATH', '')
-    plugin_path = f"{conda_lib}:{existing_plugin_path}" if conda_lib else existing_plugin_path
+
+    valid_libs = [d for d in [pixi_lib, python_prefix_lib, conda_lib] if os.path.isdir(d)]
+    if existing_plugin_path:
+        valid_libs.append(existing_plugin_path)
+    plugin_path = ':'.join(valid_libs)
 
     # Force gz-transport to use loopback to prevent Wi-Fi router multicast packet drops
     set_gz_ip = SetEnvironmentVariable('GZ_IP', '127.0.0.1')
@@ -117,6 +131,7 @@ def generate_launch_description():
         set_plugin_path,
         declare_use_sim_time,
         declare_headless,
+        declare_world,
         robot_state_publisher_node,
         gz_sim_gui,
         gz_sim_headless,
