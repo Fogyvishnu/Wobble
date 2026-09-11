@@ -2,7 +2,7 @@ import os
 import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler, GroupAction, ExecuteProcess
 from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -26,11 +26,15 @@ def generate_launch_description():
     headless = LaunchConfiguration('headless')
     use_sim_time = LaunchConfiguration('use_sim_time')
     manual_mode = LaunchConfiguration('manual')
+    use_remote = LaunchConfiguration('remote')
+    enable_balance = LaunchConfiguration('balance')
 
     declare_use_rviz = DeclareLaunchArgument('rviz', default_value='true', description='Start RViz2 if true')
     declare_headless = DeclareLaunchArgument('headless', default_value='false', description='Run Gazebo headless if true')
     declare_use_sim_time = DeclareLaunchArgument('use_sim_time', default_value='true', description='Use sim time')
-    declare_manual = DeclareLaunchArgument('manual', default_value='false', description='Enable manual remote control instead of autonomous navigator if true')
+    declare_manual = DeclareLaunchArgument('manual', default_value='false', description='Enable manual mode instead of autonomous navigator if true')
+    declare_use_remote = DeclareLaunchArgument('remote', default_value=manual_mode, description='Start remote control GUI if true')
+    declare_balance = DeclareLaunchArgument('balance', default_value='true', description='Start balance controller if true')
 
     # Environment variables for Wayland/X11 & Loopback Discovery
     pixi_lib = '/home/vish/PROJECTS/Wobble/.pixi/envs/default/lib'
@@ -51,7 +55,9 @@ def generate_launch_description():
         declare_use_rviz,
         declare_headless,
         declare_use_sim_time,
-        declare_manual
+        declare_manual,
+        declare_use_remote,
+        declare_balance
     ]
 
     if os.path.exists('/usr/lib/libdrm_amdgpu.so.1'):
@@ -97,7 +103,11 @@ def generate_launch_description():
         executable='parameter_bridge',
         name='wobble_ros_gz_bridge',
         output='screen',
-        parameters=[{'config_file': bridge_config, 'use_sim_time': use_sim_time}]
+        parameters=[{'config_file': bridge_config, 'use_sim_time': use_sim_time}],
+        arguments=[
+            '/world/wobble_hurdle_course/set_pose@ros_gz_interfaces/srv/SetEntityPose@gz.msgs.Pose@gz.msgs.Boolean',
+            '/world/wobble_hurdle_course/control@ros_gz_interfaces/srv/ControlWorld@gz.msgs.WorldControl@gz.msgs.Boolean'
+        ]
     )
     actions.append(bridge_node)
 
@@ -139,7 +149,11 @@ def generate_launch_description():
     delay_control_nodes = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawner_node,
-            on_exit=[balance_node, navigator_node, remote_node]
+            on_exit=[
+                GroupAction(actions=[balance_node], condition=IfCondition(enable_balance)),
+                GroupAction(actions=[navigator_node], condition=UnlessCondition(manual_mode)),
+                GroupAction(actions=[remote_node], condition=IfCondition(use_remote))
+            ]
         )
     )
     actions.append(delay_control_nodes)

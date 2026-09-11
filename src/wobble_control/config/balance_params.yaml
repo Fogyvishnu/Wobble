@@ -4,30 +4,30 @@ wobble_balance_controller:
     loop_rate_hz: 200.0
 
     # Inner Pitch Balance Loop
-    # tau_bal = kp_pitch * (pitch - target_pitch) + kd_pitch * pitch_rate + ki_pitch * integral
-    pitch_kp: 18.0
-    pitch_kd: 1.4
-    pitch_ki: 0.8
-    pitch_integral_max: 0.4
-    pitch_offset: 0.0      # Mechanical balance bias trimming (rad)
+    # tau_bal = pitch_kp * (pitch - target_pitch) + pitch_kd * pitch_rate + pitch_ki * integral
+    pitch_kp: 1.8
+    pitch_kd: 0.08
+    pitch_ki: 0.02
+    pitch_integral_max: 0.04
+    pitch_offset: 0.010    # True dynamic physical CoM equilibrium (+0.57 deg)
 
-    # Outer Velocity / Position Loop
-    # target_pitch = pitch_offset - (vel_kp * vel_err + vel_ki * integral)
-    vel_kp: 0.12
-    vel_ki: 0.01
-    vel_integral_max: 0.04
-    max_target_pitch: 0.08 # Maximum lean angle command in rad (~4.6 deg) to preserve torque headroom
+    # Cascaded Tilt-Demand Outer Loop
+    pos_kp: 0.040          # Clean position return stiffness (rad/m)
+    vel_kd: 0.250          # Overdamped velocity damping & braking authority (rad/(m/s))
+    vel_ki: 0.000          # Zero trim rate (pure PD outer loop)
+    vel_kp: 0.025          # Calibrated driving feedforward lean (rad/(m/s))
+    max_target_pitch: 0.075 # Dynamic lean demand limit (~4.3 deg)
 
     # Yaw / Differential Steering Loop
     # delta_tau = kp_yaw * (yaw_cmd - measured_yaw_rate)
-    yaw_kp: 0.35
-    yaw_kd: 0.02
+    yaw_kp: 0.25
+    yaw_kd: 0.01
 
     # Physical Robot Parameters
     wheel_radius: 0.035     # 70mm diameter wheels
     wheel_separation: 0.18  # Track width in meters
-    max_wheel_torque: 1.5   # N*m limit per DC motor
-    fall_angle_threshold: 0.9 # Fall detection pitch cutoff rad (~51.5 deg)
+    max_wheel_torque: 0.80  # N*m motor torque limit
+    fall_angle_threshold: 0.80 # Fall detection pitch cutoff rad (~46 deg)
 
     # 4-Bar Posture & MG995 Servos
     servo_limit_min: -1.570796  # -pi/2 rad

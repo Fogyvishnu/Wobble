@@ -13,6 +13,9 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration('rviz')
     headless = LaunchConfiguration('headless')
     use_remote = LaunchConfiguration('remote')
+    manual_mode = LaunchConfiguration('manual')
+
+    enable_balance = LaunchConfiguration('balance')
 
     declare_use_rviz = DeclareLaunchArgument(
         'rviz',
@@ -32,6 +35,18 @@ def generate_launch_description():
         description='Start remote control GUI alongside Gazebo if true'
     )
 
+    declare_manual = DeclareLaunchArgument(
+        'manual',
+        default_value='true',
+        description='Enable manual control mode if true (disables autonomous navigator)'
+    )
+
+    declare_balance = DeclareLaunchArgument(
+        'balance',
+        default_value='true',
+        description='Start balance controller if true'
+    )
+
     # Master hurdle course launch with manual remote control enabled by default
     hurdle_course_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -40,7 +55,9 @@ def generate_launch_description():
         launch_arguments={
             'rviz': use_rviz,
             'headless': headless,
-            'manual': use_remote
+            'manual': manual_mode,
+            'remote': use_remote,
+            'balance': enable_balance
         }.items()
     )
 
@@ -48,5 +65,7 @@ def generate_launch_description():
         declare_use_rviz,
         declare_headless,
         declare_use_remote,
+        declare_manual,
+        declare_balance,
         hurdle_course_launch
     ])
