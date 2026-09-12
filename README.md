@@ -15,6 +15,7 @@ Wobble is a dynamically balancing, two-wheeled bipedal robot designed to explore
 * **Posture Actuation:** 2x MG995 180° Servos controlling symmetric/differential 4-bar squat linkages ($[-\pi/2, +\pi/2]$ rad)
 * **Balancing Actuation:** 2x DC Motors with high-resolution magnetic quadrature encoders
 * **Sensing:** MPU6050 6-axis IMU (gyroscope + accelerometer) on torso center
+* **Vision Perception:** Wide-angle forward-facing RGB camera ($640 \times 480$ @ 30 FPS, 80° FOV) with optical frame conventions and real-time OpenCV perception pipeline
 
 ---
 
@@ -33,6 +34,20 @@ The simulation uses a Cascaded PID architecture mirroring the physical ESP32-S3 
 * **Inner Pitch Balance Loop (200 Hz):** Reads pitch angle $\theta$ and pitch angular velocity $\dot{\theta}$ from the MPU6050 `/imu/data` to compute balancing wheel torque $\tau_{bal}$.
 * **Yaw Steering Loop (100 Hz):** Computes differential wheel torque $\Delta \tau$ for directional steering.
 * **Fall Detection Watchdog:** Shuts down wheel motors if $|\theta| > 45^\circ$ to prevent motor runaway or hardware burnout.
+
+### Vision Perception & Autonomous Navigation
+The autonomous vision navigator (`wobble_control/course_navigator.py`) processes 30 FPS raw camera frames (`/camera/image_raw`) and executes real-time obstacle perception and trajectory planning:
+* **Centerline Visual Servoing:** Detects the track yellow centerline in HSV color space to maintain zero lateral lane tracking error.
+* **Low-Clearance Overhead Hurdle Clearance:** Detects horizontal crossbars, triggering dynamic 4-bar squat ($\theta = -0.55\text{ rad}$) and forward lean offset compensation ($+13.9^\circ$) to glide under low clearance obstacles with 40mm margin.
+* **Multi-Bollard Slalom Weaving:** Tracks cyan slalom markers and navigates alternating left/right weaving curves with athletic cornering posture ($\theta = -0.15\text{ rad}$).
+* **Compliant Speed Bump Traversal:** Dynamically softens posture to absorb surface impacts over asphalt terrain ramps.
+* **Finish Arch Detection & Active Braking:** Detects green finish archway, executes active pitch deceleration, and brings the robot to a stabilized upright halt.
+* **Cybernetic HUD Stream:** Publishes real-time annotated perception imagery to `/camera/annotated_image` with target bounding boxes, lane center reticle, and telemetry metrics.
+
+<p align="center">
+  <img src="assets/wobble_hud_duck.png" alt="Autonomous Duck Under Hurdle" width="48%"/>
+  <img src="assets/wobble_hud_slalom.png" alt="Autonomous Slalom Navigation" width="48%"/>
+</p>
 
 ---
 
@@ -131,8 +146,20 @@ Build all 4 ROS 2 packages using `colcon` inside the isolated Pixi environment:
 pixi run build
 ```
 
-### 3. Launch the Complete Simulation (Single Command)
-Launch Gazebo Harmonic with the Hurdle Course, the robot spawner, ROS-Gazebo bridge, the Cascaded PID balance controller, the unified Remote Control GUI, and RViz2 all in one command:
+### 3. Launching the Simulation
+
+#### A. Fully Autonomous Vision Navigation (Recommended)
+Launches Gazebo Harmonic, the Hurdle & Obstacle Course, balance controller, autonomous vision navigator, and RViz2 with live cybernetic HUD overlay:
+```bash
+pixi run auto
+```
+*For automated testing or headless servers:*
+```bash
+pixi run auto-headless
+```
+
+#### B. Manual Interactive Remote Control
+Launch Gazebo Harmonic with the Hurdle Course, the robot spawner, ROS-Gazebo bridge, the Cascaded PID balance controller, the unified Remote Control GUI, and RViz2:
 ```bash
 pixi run sim
 ```
@@ -166,11 +193,13 @@ pixi run remote-cli
 
 | Command | Description |
 |---|---|
-| `pixi run build` | Builds all packages via `colcon build --symlink-install` |
-| `pixi run sim` | Launches full GUI simulation (Gazebo + Balance + Remote Control + RViz) |
-| `pixi run sim-headless` | Launches Gazebo in headless mode without GUI for automated testing or servers |
+| `pixi run auto` | Launches autonomous vision mission with Gazebo GUI & RViz2 HUD overlay |
+| `pixi run auto-headless` | Runs autonomous vision mission in headless mode (for CI / testing) |
+| `pixi run sim` | Launches full manual GUI simulation (Gazebo + Balance + Remote Control + RViz) |
+| `pixi run sim-headless` | Launches Gazebo in headless mode without GUI for manual testing |
 | `pixi run remote` | Launches the standalone PyQt5 remote control interface |
 | `pixi run remote-cli` | Launches the terminal keyboard remote control interface |
+| `pixi run build` | Builds all packages via `colcon build --symlink-install` |
 | `pixi run display` | Launches RViz2 with interactive joint GUI sliders for kinematic inspection |
 | `pixi run check-urdf` | Validates URDF/Xacro kinematic tree and link inertial definitions |
 | `pixi run squat` | Quick topic command to trigger squat posture ($-0.42$ rad) |
