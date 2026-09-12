@@ -103,6 +103,7 @@ class WobbleVisionNavigator(Node):
         self.current_cmd_vx = 0.0
         self.current_cmd_wz = 0.0
         self.current_squat_cmd = 0.0
+        self.filtered_repulse_wz = 0.0
 
         # Navigation State Machine
         self.state = "INIT_WAIT"
@@ -395,11 +396,11 @@ class WobbleVisionNavigator(Node):
             wz = lane_wz
             squat_angle = 0.0
 
-            # Hurdle 1 at 3.2m: initiate squat approach when distance >= 2.0m or visual sighting
-            if (self.hurdle_detected and self.hurdle_distance_px > 210) or d >= 2.0:
+            # Hurdle 1 at 3.2m: initiate squat approach earlier (d >= 1.6m or visual sighting)
+            if (self.hurdle_detected and self.hurdle_distance_px > 210) or d >= 1.6:
                 self.state = "STAGE2_APPROACH_HURDLE1"
                 self.state_timer = 0.0
-                self.get_logger().info(f"[STAGE 2] Hurdle 1 detected in camera (W={self.hurdle_distance_px:.0f}px)! Initiating squat.")
+                self.get_logger().info(f"[STAGE 2] Hurdle 1 approach initiated at {d:.2f}m! Pre-squatting for smooth entry.")
 
         # STAGE 2: Low-Clearance Overhead Hurdle 1
         elif self.state == "STAGE2_APPROACH_HURDLE1":
@@ -455,20 +456,25 @@ class WobbleVisionNavigator(Node):
 
             tracking_wz = -2.2 * e_y - 0.7 * e_psi
 
-            # Active Visual Obstacle Avoidance Repulsion
+            # Active Visual Obstacle Avoidance Repulsion with smoothing filter
             vis_repulse_wz = 0.0
             if self.bollard_detected and self.bollard_w > 20:
                 gate_num = int((d - 6.7) / 1.6) + 1
                 if gate_num % 2 == 1:
                     # Bollard is on our left (+Y); if cx > 240 steer right
                     if self.bollard_cx > 240:
-                        vis_repulse_wz = -0.40 * min(1.0, (self.bollard_cx - 240) / 100.0)
+                        vis_repulse_wz = -0.35 * min(1.0, (self.bollard_cx - 240) / 100.0)
                 else:
                     # Bollard is on our right (-Y); if cx < 400 steer left
                     if self.bollard_cx < 400:
-                        vis_repulse_wz = 0.40 * min(1.0, (400 - self.bollard_cx) / 100.0)
+                        vis_repulse_wz = 0.35 * min(1.0, (400 - self.bollard_cx) / 100.0)
 
-            wz = max(-0.45, min(0.45, tracking_wz + vis_repulse_wz))
+            self.filtered_repulse_wz = 0.70 * self.filtered_repulse_wz + 0.30 * vis_repulse_wz
+            wz = max(-0.40, min(0.40, tracking_wz + self.filtered_repulse_wz))
+
+            # Cornering speed reduction: ease forward velocity through turn apex to stabilize balance
+            vx = vx / (1.0 + 0.35 * abs(wz))
+
             current_gate = min(5, max(1, int((d - 6.7) / 1.6) + 1))
             status_msg = f"Stage 4: Slalom Gate {current_gate}/5 | Dist: {d:.2f}m | RefY: {y_ref:+.2f}m"
 
@@ -512,7 +518,7 @@ class WobbleVisionNavigator(Node):
                 wz = 0.0
             wz = max(-0.35, min(0.35, wz))
 
-            if d >= 23.4:
+            if d >= 23.0:
                 self.state = "STAGE7_APPROACH_HURDLE2"
                 self.get_logger().info(f"[STAGE 7] Speed bumps traversed! Approaching Hurdle 2 (Double Squat) at {d:.2f}m.")
 
@@ -566,15 +572,16 @@ class WobbleVisionNavigator(Node):
             squat_angle = 0.0
 
         # ==================== Inverted Pendulum Command Smoothing ====================
-        # Slew-rate acceleration limiter
-        accel_limit = 0.60  # m/s^2 forward acceleration limit
+        # Slew-rate acceleration limiter for linear forward drive
+        accel_limit = 0.50  # m/s^2 forward acceleration limit
         max_dv = accel_limit * self.dt
         if abs(vx - self.current_cmd_vx) > max_dv:
             self.current_cmd_vx += math.copysign(max_dv, vx - self.current_cmd_vx)
         else:
             self.current_cmd_vx = vx
 
-        yaw_accel_limit = 1.80  # rad/s^2 yaw acceleration limit
+        # Slew-rate acceleration limiter for yaw steering
+        yaw_accel_limit = 1.50  # rad/s^2 yaw acceleration limit
         max_dw = yaw_accel_limit * self.dt
         if abs(wz - self.current_cmd_wz) > max_dw:
             self.current_cmd_wz += math.copysign(max_dw, wz - self.current_cmd_wz)

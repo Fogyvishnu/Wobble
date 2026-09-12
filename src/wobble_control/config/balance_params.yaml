@@ -5,23 +5,22 @@ wobble_balance_controller:
 
     # Inner Pitch Balance Loop
     # tau_bal = pitch_kp * (pitch - target_pitch) + pitch_kd * pitch_rate + pitch_ki * integral
-    pitch_kp: 1.8
-    pitch_kd: 0.08
-    pitch_ki: 0.02
-    pitch_integral_max: 0.04
-    pitch_offset: 0.010    # True dynamic physical CoM equilibrium (+0.57 deg)
+    pitch_kp: 1.80          # Calibrated optimal upright stiffness
+    pitch_kd: 0.085         # Enhanced damping against terrain disturbances
+    pitch_ki: 0.020         # Steady-state zero-drift integrator
+    pitch_integral_max: 0.040
+    pitch_offset: 0.010     # Dynamic physical CoM equilibrium (+0.57 deg)
 
     # Cascaded Tilt-Demand Outer Loop
-    pos_kp: 0.040          # Clean position return stiffness (rad/m)
-    vel_kd: 0.250          # Overdamped velocity damping & braking authority (rad/(m/s))
-    vel_ki: 0.000          # Zero trim rate (pure PD outer loop)
-    vel_kp: 0.025          # Calibrated driving feedforward lean (rad/(m/s))
+    pos_kp: 0.040           # Position holding stiffness (rad/m)
+    vel_kd: 0.250           # Critically damped velocity braking authority (rad/(m/s))
+    vel_ki: 0.000           # Zero trim rate (pure PD outer loop)
+    vel_kp: 0.025           # Calibrated driving feedforward lean (rad/(m/s))
     max_target_pitch: 0.075 # Dynamic lean demand limit (~4.3 deg)
 
     # Yaw / Differential Steering Loop
-    # delta_tau = kp_yaw * (yaw_cmd - measured_yaw_rate)
-    yaw_kp: 0.25
-    yaw_kd: 0.01
+    yaw_kp: 0.25            # Responsive yaw steering
+    yaw_kd: 0.010           # Yaw damping
 
     # Physical Robot Parameters
     wheel_radius: 0.035     # 70mm diameter wheels

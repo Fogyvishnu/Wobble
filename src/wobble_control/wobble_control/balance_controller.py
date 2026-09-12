@@ -247,8 +247,10 @@ class WobbleBalanceController(Node):
         vel_ki = self.get_parameter('vel_ki').value
 
         if abs(self.cmd_linear_vel) < 0.01:
-            # Station-keeping mode: hold target position and damp velocity
-            pos_err = max(-0.30, min(0.30, self.robot_position - self.target_position))
+            # Station-keeping mode: update target position while vehicle is decelerating to prevent braking fight
+            if abs(self.filtered_linear_vel) > 0.03:
+                self.target_position = self.robot_position
+            pos_err = max(-0.25, min(0.25, self.robot_position - self.target_position))
             v_err = self.filtered_linear_vel
 
             desired_target_pitch = pitch_offset - (pos_kp * pos_err) - (vel_kd * v_err)
@@ -258,10 +260,14 @@ class WobbleBalanceController(Node):
             v_err = self.filtered_linear_vel - self.cmd_linear_vel
             desired_target_pitch = pitch_offset + (vel_kp * self.cmd_linear_vel) - (vel_kd * v_err)
 
+        # Centrifugal roll-pitch decoupling: softly attenuate lean demand during sharp turns
+        turn_attenuation = 1.0 / (1.0 + 0.50 * abs(self.yaw_rate))
+        desired_target_pitch = pitch_offset + (desired_target_pitch - pitch_offset) * turn_attenuation
+
         desired_target_pitch = max(pitch_offset - max_lean, min(pitch_offset + max_lean, desired_target_pitch))
 
-        # Slew-rate limit target pitch changes (0.5 rad/s)
-        max_d_target = 0.5 * self.dt
+        # Slew-rate limit target pitch changes (0.45 rad/s)
+        max_d_target = 0.45 * self.dt
         diff_target = desired_target_pitch - self.current_target_pitch
         if abs(diff_target) > max_d_target:
             self.current_target_pitch += math.copysign(max_d_target, diff_target)
@@ -270,30 +276,48 @@ class WobbleBalanceController(Node):
 
         target_pitch = self.current_target_pitch
 
-        # ========== 2. Inner Loop: Pitch Balancing ==========
+        # ========== 2. Inner Loop: Height-Scheduled Pitch Balancing ==========
         pitch_err = self.pitch - target_pitch
         self.pitch_integral += pitch_err * self.dt
         pitch_int_max = self.get_parameter('pitch_integral_max').value
         self.pitch_integral = max(-pitch_int_max, min(pitch_int_max, self.pitch_integral))
 
-        pitch_kp = self.get_parameter('pitch_kp').value
-        pitch_kd = self.get_parameter('pitch_kd').value
+        base_pitch_kp = self.get_parameter('pitch_kp').value
+        base_pitch_kd = self.get_parameter('pitch_kd').value
         pitch_ki = self.get_parameter('pitch_ki').value
 
+        # Gain scheduling with respect to effective leg height:
+        # As leg squats, pendulum length L decreases and natural frequency increases.
+        # Scale Kp down and increase Kd damping ratio to prevent high-frequency chatter in squat.
+        h_nom = crank_len + coupler_len + 0.02
+        h_ratio = max(0.40, min(1.20, dz_com / h_nom))
+        eff_pitch_kp = base_pitch_kp * (0.65 + 0.35 * h_ratio)
+        eff_pitch_kd = base_pitch_kd * (1.20 - 0.20 * h_ratio)
+
         # Balance torque: pure pitch stabilization to track target_pitch
-        tau_balance = (pitch_kp * pitch_err) + (pitch_kd * self.pitch_rate) + (pitch_ki * self.pitch_integral)
+        tau_balance = (eff_pitch_kp * pitch_err) + (eff_pitch_kd * self.pitch_rate) + (pitch_ki * self.pitch_integral)
 
         # ========== 3. Yaw / Steering Control ==========
         yaw_err = self.cmd_yaw_vel - self.yaw_rate
-        if abs(yaw_err) < 0.05 and abs(self.cmd_yaw_vel) < 0.01:
+        if abs(yaw_err) < 0.04 and abs(self.cmd_yaw_vel) < 0.01:
             yaw_err = 0.0
         yaw_kp = self.get_parameter('yaw_kp').value
-        delta_tau = yaw_kp * yaw_err
+        yaw_kd = self.get_parameter('yaw_kd').value
+        delta_tau = (yaw_kp * yaw_err)
 
-        # ========== 4. Mixer & Saturation ==========
+        # ========== 4. Strict Balance-Priority Mixer & Saturation ==========
         max_torque = self.get_parameter('max_wheel_torque').value
-        tau_left = max(-max_torque, min(max_torque, tau_balance - delta_tau))
-        tau_right = max(-max_torque, min(max_torque, tau_balance + delta_tau))
+        
+        # Balance torque has absolute priority to prevent tipping
+        tau_balance = max(-max_torque, min(max_torque, tau_balance))
+        
+        # Allocate remaining headroom to steering to prevent asymmetric saturation
+        available_yaw = max(0.0, max_torque - abs(tau_balance))
+        if abs(delta_tau) > available_yaw:
+            delta_tau = math.copysign(available_yaw, delta_tau)
+
+        tau_left = tau_balance - delta_tau
+        tau_right = tau_balance + delta_tau
 
         # Send actuator commands
         self.publish_wheel_efforts(tau_left, tau_right)
