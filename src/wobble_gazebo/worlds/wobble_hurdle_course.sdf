@@ -183,7 +183,7 @@
     <!-- Bollard 1 (offset left) -->
     <model name="slalom_bollard_1">
       <static>true</static>
-      <pose>4.8 0.22 0.2 0 0 0</pose>
+      <pose>4.8 0.32 0.2 0 0 0</pose>
       <link name="link">
         <collision name="col">
           <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
@@ -201,7 +201,7 @@
     <!-- Bollard 2 (offset right) -->
     <model name="slalom_bollard_2">
       <static>true</static>
-      <pose>6.0 -0.22 0.2 0 0 0</pose>
+      <pose>6.4 -0.32 0.2 0 0 0</pose>
       <link name="link">
         <collision name="col">
           <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
@@ -219,7 +219,7 @@
     <!-- Bollard 3 (offset left) -->
     <model name="slalom_bollard_3">
       <static>true</static>
-      <pose>7.2 0.20 0.2 0 0 0</pose>
+      <pose>8.0 0.32 0.2 0 0 0</pose>
       <link name="link">
         <collision name="col">
           <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
@@ -237,7 +237,7 @@
     <!-- ==================== HURDLE 3: Terrain Speed Bumps (Suspension Shock Challenge) ==================== -->
     <model name="speed_bump_1">
       <static>true</static>
-      <pose>8.7 0 0.004 0 0 0</pose>
+      <pose>9.4 0 0.004 0 0 0</pose>
       <link name="link">
         <collision name="col">
           <geometry><box><size>0.20 1.8 0.008</size></box></geometry>
@@ -257,7 +257,7 @@
 
     <model name="speed_bump_2">
       <static>true</static>
-      <pose>9.3 0 0.005 0 0 0</pose>
+      <pose>10.0 0 0.005 0 0 0</pose>
       <link name="link">
         <collision name="col">
           <geometry><box><size>0.24 1.8 0.010</size></box></geometry>
@@ -278,7 +278,7 @@
     <!-- ==================== FINISH LINE ARCH ==================== -->
     <model name="finish_arch">
       <static>true</static>
-      <pose>11.0 0 0 0 0 0</pose>
+      <pose>11.5 0 0 0 0 0</pose>
       <link name="link">
         <!-- Left Pillar -->
         <visual name="pillar_left">

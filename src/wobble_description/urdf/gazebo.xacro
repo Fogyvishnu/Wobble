@@ -17,6 +17,15 @@
     <!-- IMU Sensor System -->
     <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu">
     </plugin>
+
+    <!-- Ground Truth Odometry System -->
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+      <odom_frame>odom</odom_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <odom_topic>/wobble/odom</odom_topic>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <dimensions>3</dimensions>
+    </plugin>
   </gazebo>
 
   <!-- MPU6050 6-Axis IMU Sensor Specification -->

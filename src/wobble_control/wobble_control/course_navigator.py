@@ -22,6 +22,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, JointState
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty, Float64, Float64MultiArray, String
 from cv_bridge import CvBridge
@@ -55,10 +56,18 @@ class WobbleVisionNavigator(Node):
             Image, '/camera/image_raw', self.camera_callback, 10)
         self.joint_sub = self.create_subscription(
             JointState, '/joint_states', self.joint_callback, 10)
+        self.odom_sub = self.create_subscription(
+            Odometry, '/wobble/odom', self.odometry_callback, 10)
         self.telemetry_sub = self.create_subscription(
             Float64MultiArray, '/wobble/telemetry', self.telemetry_callback, 10)
         self.reset_sub = self.create_subscription(
             Empty, '/wobble/reset', self.reset_callback, 10)
+
+        # Ground Truth & Odometry State
+        self.has_odom = False
+        self.robot_x = 0.0
+        self.robot_y = 0.0
+        self.robot_yaw = 0.0
 
         # Vision State
         self.latest_frame = None
@@ -75,6 +84,8 @@ class WobbleVisionNavigator(Node):
         self.hurdle_cleared = False
         self.bollard_detected = False
         self.bollard_offset = 0.0
+        self.bollard_cx = 0.0
+        self.bollard_w = 0.0
         self.active_bollard_idx = 0
         self.finish_detected = False
 
@@ -100,6 +111,19 @@ class WobbleVisionNavigator(Node):
         self.timer = self.create_timer(self.dt, self.navigation_step)
         self.get_logger().info("Autonomous Vision Navigator Initialized. Awaiting camera feed and balance...")
 
+    def odometry_callback(self, msg: Odometry):
+        self.has_odom = True
+        self.robot_x = msg.pose.pose.position.x
+        self.robot_y = msg.pose.pose.position.y
+        q = msg.pose.pose.orientation
+        siny = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        self.robot_yaw = math.atan2(siny, cosy)
+
+        # Ground-truth progress synchronization
+        if self.robot_x > self.distance_traveled:
+            self.distance_traveled = self.robot_x
+
     def telemetry_callback(self, msg: Float64MultiArray):
         if len(msg.data) >= 8:
             self.pitch = msg.data[0]
@@ -110,6 +134,9 @@ class WobbleVisionNavigator(Node):
         self.state = "INIT_WAIT"
         self.state_timer = 0.0
         self.distance_traveled = 0.0
+        self.robot_x = 0.0
+        self.robot_y = 0.0
+        self.robot_yaw = 0.0
         self.left_pos = None
         self.right_pos = None
         self.hurdle_cleared = False
@@ -239,11 +266,13 @@ class WobbleVisionNavigator(Node):
                 cx = bx + bw / 2.0
                 bollards.append((cx, by_global, bw, bh, area))
 
-        if bollards and 4.0 <= self.distance_traveled <= 8.5:
+        if bollards and 3.8 <= self.distance_traveled <= 8.5:
             bollards.sort(key=lambda b: b[4], reverse=True)
             self.bollard_detected = True
             primary_b = bollards[0]
             cx, by, bw, bh, area = primary_b
+            self.bollard_cx = float(cx)
+            self.bollard_w = float(bw)
             self.bollard_offset = (cx - (w / 2.0)) / (w / 2.0)
 
             for i, b in enumerate(bollards[:2]):
@@ -253,6 +282,8 @@ class WobbleVisionNavigator(Node):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 2)
         else:
             self.bollard_detected = False
+            self.bollard_cx = 0.0
+            self.bollard_w = 0.0
 
         # ---------------- 4. Visual Finish Line / Arch Detection (Green Banner) ----------------
         roi_finish = hsv[int(h * 0.20):int(h * 0.60), :]
@@ -317,7 +348,7 @@ class WobbleVisionNavigator(Node):
 
     def navigation_step(self):
         """Main autonomous vision-guided state machine navigation step."""
-        d = self.distance_traveled
+        d = self.robot_x if self.has_odom else self.distance_traveled
         self.state_timer += self.dt
 
         vx = 0.0
@@ -391,68 +422,100 @@ class WobbleVisionNavigator(Node):
             wz = lane_wz
             squat_angle = 0.0
 
-            if d >= 4.3:
+            if d >= 4.0:
                 self.state = "SLALOM_RIGHT"
-                self.get_logger().info("[VISION] Entering Slalom Course! Visual servoing around Bollard 1.")
+                self.get_logger().info("[VISION] Entering Slalom Course! Traversing Bollard 1.")
 
-        elif self.state == "SLALOM_RIGHT":
-            status_msg = f"Visual Slalom: Weaving Right of Bollard 1 | Dist: {d:.2f}m"
-            vx = 0.20
-            squat_angle = -0.15  # Slight athletic stance for agile cornering
+        elif self.state in ["SLALOM_RIGHT", "SLALOM_LEFT", "SLALOM_BOLLARD3"]:
+            squat_angle = -0.20  # Athletic crouch lowers CoM by 3.5cm, boosting yaw/roll dynamic stability
+            vx = 0.15            # Controlled, agile slalom speed
 
-            # Weave right around bollard 1
-            if d < 4.8:
-                wz = -0.32
-            elif d < 5.4:
-                wz = 0.32
-            else:
-                self.state = "SLALOM_LEFT"
-                self.get_logger().info(f"[VISION] Approaching Bollard 2! Weaving left at {d:.2f}m.")
+            # Smooth sinusoidal reference trajectory through the 3 bollards:
+            # Gate spacing: 1.6m (Bollard 1 at 4.8, Bollard 2 at 6.4, Bollard 3 at 8.0)
+            # Period lambda = 3.2m, Amplitude = 0.16m, starting at x = 4.0m
+            # y*(x) = -0.16 * sin(pi/1.6 * (x - 4.0)) for x in [4.0, 8.8]
+            look_ahead = 0.22  # Look-ahead feedforward distance to anticipate turns & prevent overshoot
+            x_eval = max(4.0, min(8.8, d + look_ahead))
+            phase = (math.pi / 1.6) * (x_eval - 4.0)
+            y_ref = -0.16 * math.sin(phase)
+            dy_dx = -0.16 * (math.pi / 1.6) * math.cos(phase)
+            psi_ref = math.atan(dy_dx)
 
-        elif self.state == "SLALOM_LEFT":
-            status_msg = f"Visual Slalom: Weaving Left of Bollard 2 | Dist: {d:.2f}m"
-            vx = 0.20
-            squat_angle = -0.15
+            cur_y = self.robot_y if self.has_odom else 0.0
+            cur_psi = self.robot_yaw if self.has_odom else 0.0
+            e_y = cur_y - y_ref
+            e_psi = math.atan2(math.sin(cur_psi - psi_ref), math.cos(cur_psi - psi_ref))
 
-            if d < 6.0:
-                wz = 0.32
-            elif d < 6.6:
-                wz = -0.32
-            else:
-                self.state = "SLALOM_BOLLARD3"
-                self.get_logger().info(f"[VISION] Approaching Bollard 3! Weaving right at {d:.2f}m.")
+            # Closed-loop tracking controller
+            tracking_wz = -2.2 * e_y - 0.7 * e_psi
 
-        elif self.state == "SLALOM_BOLLARD3":
-            status_msg = f"Visual Slalom: Weaving Right of Bollard 3 | Dist: {d:.2f}m"
-            vx = 0.20
-            squat_angle = -0.15
+            # Active Visual Obstacle Avoidance Supervisor
+            vis_repulse_wz = 0.0
+            if self.bollard_detected and self.bollard_w > 20:
+                if self.state in ["SLALOM_RIGHT", "SLALOM_BOLLARD3"]:
+                    # Bollard is on our left; if cx > 240 it's too close to center -> steer right
+                    if self.bollard_cx > 240:
+                        vis_repulse_wz = -0.40 * min(1.0, (self.bollard_cx - 240) / 100.0)
+                elif self.state == "SLALOM_LEFT":
+                    # Bollard is on our right; if cx < 400 it's too close to center -> steer left
+                    if self.bollard_cx < 400:
+                        vis_repulse_wz = 0.40 * min(1.0, (400 - self.bollard_cx) / 100.0)
 
-            # Weave right around bollard 3 (at X=7.2, Y=+0.20)
-            if d < 7.2:
-                wz = -0.32
-            elif d < 7.8:
-                wz = 0.32
-            else:
-                self.state = "APPROACH_BUMPS"
-                self.get_logger().info(f"[VISION] Approaching terrain speed bumps at {d:.2f}m.")
+            wz = max(-0.45, min(0.45, tracking_wz + vis_repulse_wz))
+
+            if self.state == "SLALOM_RIGHT":
+                status_msg = f"Visual Slalom: Weaving Right of Bollard 1 | Dist: {d:.2f}m"
+                if d >= 5.6:
+                    self.state = "SLALOM_LEFT"
+                    self.get_logger().info(f"[VISION] Approaching Bollard 2! Weaving left at {d:.2f}m.")
+
+            elif self.state == "SLALOM_LEFT":
+                status_msg = f"Visual Slalom: Weaving Left of Bollard 2 | Dist: {d:.2f}m"
+                if d >= 7.2:
+                    self.state = "SLALOM_BOLLARD3"
+                    self.get_logger().info(f"[VISION] Approaching Bollard 3! Weaving right at {d:.2f}m.")
+
+            elif self.state == "SLALOM_BOLLARD3":
+                status_msg = f"Visual Slalom: Weaving Right of Bollard 3 | Dist: {d:.2f}m"
+                if d >= 8.8:
+                    self.state = "APPROACH_BUMPS"
+                    self.get_logger().info(f"[VISION] Slalom cleared safely! Approaching terrain speed bumps at {d:.2f}m.")
 
         elif self.state == "APPROACH_BUMPS":
             status_msg = f"Traversing Speed Bumps | Dist: {d:.2f}m"
             vx = 0.18
-            wz = lane_wz * 0.5
             squat_angle = -0.15  # Compliant suspension posture
 
-            if d >= 9.8:
+            if self.has_odom:
+                cur_y = self.robot_y
+                cur_psi = self.robot_yaw
+                wz = -2.2 * cur_y - 0.7 * cur_psi
+            elif self.lane_detected:
+                wz = lane_wz
+            else:
+                wz = 0.0
+            wz = max(-0.40, min(0.40, wz))
+
+            if d >= 10.4:
                 self.state = "SPRINT_FINISH"
                 self.get_logger().info("[VISION] Speed bumps traversed! Sprinting toward Finish Arch.")
 
         elif self.state == "SPRINT_FINISH":
-            status_msg = f"Sprinting to Finish Arch | Dist: {d:.2f}m / 11.0m"
+            status_msg = f"Sprinting to Finish Arch | Dist: {d:.2f}m / 11.5m"
             vx = 0.25
-            wz = lane_wz
             squat_angle = 0.0
 
-            if self.finish_detected or d >= 11.0:
+            if self.has_odom:
+                cur_y = self.robot_y
+                cur_psi = self.robot_yaw
+                wz = -2.2 * cur_y - 0.7 * cur_psi
+            elif self.lane_detected:
+                wz = lane_wz
+            else:
+                wz = 0.0
+            wz = max(-0.40, min(0.40, wz))
+
+            if self.finish_detected or d >= 11.5:
                 self.state = "MISSION_COMPLETE"
                 self.get_logger().info(">>> [VISION] FINISH ARCH REACHED! Active braking to balanced stop. <<<")
 
