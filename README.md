@@ -14,8 +14,9 @@ Wobble is a dynamically balancing, two-wheeled bipedal robot designed to explore
 * **Physical Target Platform:** ESP32-S3 microcontroller + FreeRTOS
 * **Posture Actuation:** 2x MG995 180° Servos controlling symmetric/differential 4-bar squat linkages ($[-\pi/2, +\pi/2]$ rad)
 * **Balancing Actuation:** 2x DC Motors with high-resolution magnetic quadrature encoders
-* **Sensing:** MPU6050 6-axis IMU (gyroscope + accelerometer) on torso center
-* **Vision Perception:** Wide-angle forward-facing RGB camera ($640 \times 480$ @ 30 FPS, 80° FOV) with optical frame conventions and real-time OpenCV perception pipeline
+* **Vision & Spectator Cameras:**
+  * **Forward-Facing RGB Camera:** $640 \times 480$ @ 30 FPS (80° FOV) with optical frame conventions and real-time OpenCV perception pipeline (`/camera/image_raw`, `/camera/annotated_image`).
+  * **Third-Person Chase Camera:** $800 \times 600$ @ 30 FPS (83° FOV) mounted behind and above `base_footprint` for cinematic 3D telemetry tracking (`/camera/chase_raw`).
 
 ---
 
@@ -49,9 +50,18 @@ The autonomous vision navigator (`wobble_control/course_navigator.py`) processes
 
 * **Cybernetic HUD Stream:** Publishes annotated telemetry overlay to `/camera/annotated_image` with target bounding boxes, lane center reticle, current obstacle stage, pitch angle, squat deflection, and live speed.
 
+### Autonomous 30m Championship Course in Action
+
 <p align="center">
-  <img src="assets/wobble_hud_duck.png" alt="Autonomous Duck Under Hurdle" width="48%"/>
-  <img src="assets/wobble_hud_slalom.png" alt="Autonomous Slalom Navigation" width="48%"/>
+  <img src="assets/wobble_stage2_hurdle.png" alt="Stage 2: 4-Bar Squat Ducking Under Low Hurdle" width="49%"/>
+  <img src="assets/wobble_stage4_slalom.png" alt="Stage 4: Dynamic 5-Gate Slalom Weaving" width="49%"/>
+</p>
+<p align="center">
+  <img src="assets/wobble_stage5_canyon.png" alt="Stage 5: Precision Canyon Corridor Traversal" width="49%"/>
+  <img src="assets/wobble_stage6_bumps.png" alt="Stage 6: Graded Speed Bumps Suspension Compliance" width="49%"/>
+</p>
+<p align="center">
+  <img src="assets/wobble_stage8_finish.png" alt="Stage 8: Championship Finish Archway Crossing" width="100%"/>
 </p>
 
 ---
