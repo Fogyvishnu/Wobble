@@ -35,14 +35,19 @@ The simulation uses a Cascaded PID architecture mirroring the physical ESP32-S3 
 * **Yaw Steering Loop (100 Hz):** Computes differential wheel torque $\Delta \tau$ for directional steering.
 * **Fall Detection Watchdog:** Shuts down wheel motors if $|\theta| > 45^\circ$ to prevent motor runaway or hardware burnout.
 
-### Vision Perception & Autonomous Navigation
-The autonomous vision navigator (`wobble_control/course_navigator.py`) processes 30 FPS raw camera frames (`/camera/image_raw`) and executes real-time obstacle perception and trajectory planning:
-* **Centerline Visual Servoing:** Detects the track yellow centerline in HSV color space to maintain zero lateral lane tracking error.
-* **Low-Clearance Overhead Hurdle Clearance:** Detects horizontal crossbars, triggering dynamic 4-bar squat ($\theta = -0.55\text{ rad}$) and forward lean offset compensation ($+13.9^\circ$) to glide under low clearance obstacles with 40mm margin.
-* **Multi-Bollard Slalom Weaving:** Tracks cyan slalom markers and navigates alternating left/right weaving curves with athletic cornering posture ($\theta = -0.15\text{ rad}$).
-* **Compliant Speed Bump Traversal:** Dynamically softens posture to absorb surface impacts over asphalt terrain ramps.
-* **Finish Arch Detection & Active Braking:** Detects green finish archway, executes active pitch deceleration, and brings the robot to a stabilized upright halt.
-* **Cybernetic HUD Stream:** Publishes real-time annotated perception imagery to `/camera/annotated_image` with target bounding boxes, lane center reticle, and telemetry metrics.
+### Vision Perception & Autonomous Navigation: 30-Meter Championship Proving Ground
+The autonomous vision navigator (`wobble_control/course_navigator.py`) processes 30 FPS raw camera frames (`/camera/image_raw`) and ground-truth telemetry to conquer an expanded **30-meter multi-stage championship proving ground** featuring 8 sequential obstacle stages:
+
+1. **Stage 1: Runway Acceleration ($X = 0.0 \to 2.0\text{ m}$):** Smooth acceleration to establish steady inverted pendulum balance and lock onto the yellow centerline via HSV visual servoing.
+2. **Stage 2: Low-Clearance Overhead Hurdle 1 ($X = 3.2\text{ m}$):** Wide-angle camera detects orange overhead crossbar ($Z = 0.285\text{ m}$), commanding a deep 4-bar squat ($\theta = -0.55\text{ rad}$) and dynamic pitch offset compensation ($+13.9^\circ$) to glide under with a safe $40\text{ mm}$ clearance.
+3. **Stage 3: Elevated Standing Posture Speed Gate ($X = 5.5\text{ m}$):** Sights high yellow gate ($Z = 0.52\text{ m}$), triggering full upright posture extension ($\theta = 0.0\text{ rad}$) at cruising velocity ($0.22\text{ m/s}$).
+4. **Stage 4: 5-Gate Championship Slalom Arena ($X = 6.7 \to 15.0\text{ m}$):** Navigates 5 alternating cyan bollards ($Y = \pm 0.32\text{ m}$, $\Delta X = 1.6\text{ m}$) via closed-loop sinusoidal reference tracking with $0.22\text{ m}$ lookahead feedforward, cornering crouch posture ($\theta = -0.20\text{ rad}$), and active camera-based obstacle repulsion ($>0.50\text{ m}$ obstacle margin on all gates).
+5. **Stage 5: Precision Canyon / Squeeze Corridor ($X = 15.0 \to 18.8\text{ m}$):** Safety barriers taper to a narrow $0.90\text{ m}$ squeeze section, demanding high-gain centerline servoing ($|e_y| < 0.03\text{ m}$).
+6. **Stage 6: Graded Multi-Frequency Speed Bumps ($X = 19.0 \to 23.4\text{ m}$):** Traverses 4 graded arched terrain mounds ($6\text{ mm}, 7\text{ mm}, 8\text{ mm}, 6\text{ mm}$) in compliant suspension crouch ($\theta = -0.25\text{ rad}$), testing passive chassis compliance and pitch disturbance rejection without tipping.
+7. **Stage 7: Low Overhead Hurdle 2 (Double Squat Challenge!) ($X = 25.0\text{ m}$):** Second low-clearance crossbar verifying dynamic 4-bar linkage repeatability and rapid squat recovery under real-time visual tracking.
+8. **Stage 8: Grand Sprint & Championship Finish Arch ($X = 25.8 \to 30.0\text{ m}$):** Rises to upright posture ($\theta = 0.0\text{ rad}$) for a high-speed $0.28\text{ m/s}$ sprint, detecting the monumental green victory archway and executing active balanced zero-velocity braking at the $30\text{ m}$ checkered line.
+
+* **Cybernetic HUD Stream:** Publishes annotated telemetry overlay to `/camera/annotated_image` with target bounding boxes, lane center reticle, current obstacle stage, pitch angle, squat deflection, and live speed.
 
 <p align="center">
   <img src="assets/wobble_hud_duck.png" alt="Autonomous Duck Under Hurdle" width="48%"/>

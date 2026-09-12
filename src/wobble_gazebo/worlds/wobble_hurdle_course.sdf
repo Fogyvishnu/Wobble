@@ -17,7 +17,7 @@
     <!-- Sun light -->
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
-      <pose>0 0 15 0 0 0</pose>
+      <pose>0 0 20 0 0 0</pose>
       <diffuse>0.9 0.9 0.9 1</diffuse>
       <specular>0.3 0.3 0.3 1</specular>
       <direction>-0.5 0.2 -0.8</direction>
@@ -31,7 +31,7 @@
           <geometry>
             <plane>
               <normal>0 0 1</normal>
-              <size>100 100</size>
+              <size>120 120</size>
             </plane>
           </geometry>
           <surface>
@@ -47,274 +47,434 @@
           <geometry>
             <plane>
               <normal>0 0 1</normal>
-              <size>100 100</size>
+              <size>120 120</size>
             </plane>
           </geometry>
           <material>
-            <ambient>0.25 0.28 0.32 1</ambient>
-            <diffuse>0.25 0.28 0.32 1</diffuse>
+            <ambient>0.22 0.25 0.28 1</ambient>
+            <diffuse>0.22 0.25 0.28 1</diffuse>
             <specular>0.1 0.1 0.1 1</specular>
           </material>
         </visual>
       </link>
     </model>
 
-    <!-- Course Track Floor (12m x 2m asphalt lane) -->
+    <!-- Course Track Floor (32m x 2.4m asphalt championship lane) -->
     <model name="course_track">
       <static>true</static>
-      <pose>5.5 0 0.001 0 0 0</pose>
+      <pose>15.0 0 0.001 0 0 0</pose>
       <link name="link">
         <visual name="track_surface">
           <geometry>
-            <box><size>13.0 2.2 0.002</size></box>
+            <box><size>33.0 2.4 0.002</size></box>
           </geometry>
           <material>
-            <ambient>0.15 0.16 0.18 1</ambient>
-            <diffuse>0.15 0.16 0.18 1</diffuse>
+            <ambient>0.14 0.15 0.17 1</ambient>
+            <diffuse>0.14 0.15 0.17 1</diffuse>
           </material>
         </visual>
-        <!-- Center dashed line -->
+        <!-- Center guidance line (Yellow) -->
         <visual name="center_line">
           <pose>0 0 0.002 0 0 0</pose>
           <geometry>
-            <box><size>12.0 0.05 0.002</size></box>
+            <box><size>32.0 0.06 0.002</size></box>
           </geometry>
           <material>
-            <ambient>0.9 0.8 0.1 1</ambient>
-            <diffuse>0.9 0.8 0.1 1</diffuse>
+            <ambient>0.95 0.85 0.1 1</ambient>
+            <diffuse>0.95 0.85 0.1 1</diffuse>
+          </material>
+        </visual>
+        <!-- Start marker line -->
+        <visual name="start_line">
+          <pose>-14.5 0 0.002 0 0 0</pose>
+          <geometry>
+            <box><size>0.2 2.2 0.002</size></box>
+          </geometry>
+          <material>
+            <ambient>0.9 0.9 0.9 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
 
-    <!-- Boundary Rails (Left & Right curbs) -->
+    <!-- Boundary Rails (Left & Right safety curbs) -->
     <model name="boundary_rails">
       <static>true</static>
       <link name="link">
         <collision name="rail_left_col">
-          <pose>5.5 1.15 0.05 0 0 0</pose>
-          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+          <pose>15.0 1.25 0.05 0 0 0</pose>
+          <geometry><box><size>33.0 0.1 0.1</size></box></geometry>
         </collision>
         <visual name="rail_left_vis">
-          <pose>5.5 1.15 0.05 0 0 0</pose>
-          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+          <pose>15.0 1.25 0.05 0 0 0</pose>
+          <geometry><box><size>33.0 0.1 0.1</size></box></geometry>
           <material>
-            <ambient>0.8 0.2 0.2 1</ambient>
-            <diffuse>0.8 0.2 0.2 1</diffuse>
+            <ambient>0.85 0.2 0.2 1</ambient>
+            <diffuse>0.85 0.2 0.2 1</diffuse>
           </material>
         </visual>
-
         <collision name="rail_right_col">
-          <pose>5.5 -1.15 0.05 0 0 0</pose>
-          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+          <pose>15.0 -1.25 0.05 0 0 0</pose>
+          <geometry><box><size>33.0 0.1 0.1</size></box></geometry>
         </collision>
         <visual name="rail_right_vis">
-          <pose>5.5 -1.15 0.05 0 0 0</pose>
-          <geometry><box><size>13.0 0.1 0.1</size></box></geometry>
+          <pose>15.0 -1.25 0.05 0 0 0</pose>
+          <geometry><box><size>33.0 0.1 0.1</size></box></geometry>
           <material>
-            <ambient>0.8 0.2 0.2 1</ambient>
-            <diffuse>0.8 0.2 0.2 1</diffuse>
+            <ambient>0.85 0.2 0.2 1</ambient>
+            <diffuse>0.85 0.2 0.2 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
 
-    <!-- ==================== HURDLE 1: Low Overhead Clearance Gate (Squat Challenge) ==================== -->
-    <!-- Clearance height is 0.255m (25.5 cm). Robot standing height is 0.265m. Must squat to pass! -->
-    <model name="low_clearance_hurdle">
+    <!-- ========================================================================= -->
+    <!-- STAGE 2: Low-Clearance Overhead Hurdle 1 (X = 3.2m)                        -->
+    <!-- Requires Deep Squat Posture (theta = -0.55 rad) to glide under 26.5cm bar -->
+    <!-- ========================================================================= -->
+    <model name="hurdle_stage_1">
       <static>true</static>
-      <pose>2.8 0 0 0 0 0</pose>
+      <link name="link">
+        <!-- Left vertical post -->
+        <collision name="post_left_col">
+          <pose>3.2 0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+        </collision>
+        <visual name="post_left_vis">
+          <pose>3.2 0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+          <material><ambient>0.95 0.40 0.05 1</ambient><diffuse>0.95 0.40 0.05 1</diffuse></material>
+        </visual>
+
+        <!-- Right vertical post -->
+        <collision name="post_right_col">
+          <pose>3.2 -0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+        </collision>
+        <visual name="post_right_vis">
+          <pose>3.2 -0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+          <material><ambient>0.95 0.40 0.05 1</ambient><diffuse>0.95 0.40 0.05 1</diffuse></material>
+        </visual>
+
+        <!-- Overhead horizontal crossbar (lower edge at Z = 0.265m) -->
+        <collision name="crossbar_col">
+          <pose>3.2 0 0.285 0 0 0</pose>
+          <geometry><box><size>0.05 1.35 0.04</size></box></geometry>
+        </collision>
+        <visual name="crossbar_vis">
+          <pose>3.2 0 0.285 0 0 0</pose>
+          <geometry><box><size>0.05 1.35 0.04</size></box></geometry>
+          <material><ambient>0.98 0.45 0.05 1</ambient><diffuse>0.98 0.45 0.05 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================================= -->
+    <!-- STAGE 3: Elevated Standing Posture Speed Gate (X = 5.5m)                  -->
+    <!-- Requires robot to rise back to full upright posture (theta = 0.0 rad)     -->
+    <!-- ========================================================================= -->
+    <model name="speed_gate">
+      <static>true</static>
       <link name="link">
         <!-- Left Post -->
-        <collision name="left_post_col">
-          <pose>0 0.5 0.25 0 0 0</pose>
-          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
+        <collision name="sg_left_col">
+          <pose>5.5 0.70 0.30 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.60</length></cylinder></geometry>
         </collision>
-        <visual name="left_post_vis">
-          <pose>0 0.5 0.25 0 0 0</pose>
-          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
-          <material>
-            <ambient>0.9 0.1 0.1 1</ambient>
-            <diffuse>0.9 0.1 0.1 1</diffuse>
-          </material>
+        <visual name="sg_left_vis">
+          <pose>5.5 0.70 0.30 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.60</length></cylinder></geometry>
+          <material><ambient>0.9 0.85 0.1 1</ambient><diffuse>0.9 0.85 0.1 1</diffuse></material>
         </visual>
 
         <!-- Right Post -->
-        <collision name="right_post_col">
-          <pose>0 -0.5 0.25 0 0 0</pose>
-          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
+        <collision name="sg_right_col">
+          <pose>5.5 -0.70 0.30 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.60</length></cylinder></geometry>
         </collision>
-        <visual name="right_post_vis">
-          <pose>0 -0.5 0.25 0 0 0</pose>
-          <geometry><cylinder><radius>0.04</radius><length>0.5</length></cylinder></geometry>
-          <material>
-            <ambient>0.9 0.1 0.1 1</ambient>
-            <diffuse>0.9 0.1 0.1 1</diffuse>
-          </material>
+        <visual name="sg_right_vis">
+          <pose>5.5 -0.70 0.30 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.60</length></cylinder></geometry>
+          <material><ambient>0.9 0.85 0.1 1</ambient><diffuse>0.9 0.85 0.1 1</diffuse></material>
         </visual>
 
-        <!-- Overhead Crossbar at Z = 0.285m (Lower edge is 0.265m above ground, standing robot is 0.280m - must squat!) -->
-        <collision name="crossbar_col">
-          <pose>0 0 0.285 0 0 0</pose>
-          <geometry><box><size>0.12 1.04 0.04</size></box></geometry>
-        </collision>
-        <visual name="crossbar_vis">
-          <pose>0 0 0.285 0 0 0</pose>
-          <geometry><box><size>0.12 1.04 0.04</size></box></geometry>
-          <material>
-            <ambient>0.95 0.5 0.0 1</ambient>
-            <diffuse>0.95 0.5 0.0 1</diffuse>
-          </material>
-        </visual>
-
-        <!-- Warning Sign Banner -->
-        <visual name="sign_banner">
-          <pose>0 0 0.33 0 0 0</pose>
-          <geometry><box><size>0.02 0.8 0.05</size></box></geometry>
-          <material>
-            <ambient>0.9 0.9 0.1 1</ambient>
-            <diffuse>0.9 0.9 0.1 1</diffuse>
-          </material>
+        <!-- Elevated Yellow Header (Z = 0.50m) -->
+        <visual name="sg_header_vis">
+          <pose>5.5 0 0.52 0 0 0</pose>
+          <geometry><box><size>0.06 1.45 0.06</size></box></geometry>
+          <material><ambient>0.95 0.85 0.1 1</ambient><diffuse>0.95 0.85 0.1 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- ==================== HURDLE 2: Slalom Bollards (Steering & Balance Challenge) ==================== -->
-    <!-- Bollard 1 (offset left) -->
+    <!-- ========================================================================= -->
+    <!-- STAGE 4: 5-Gate Championship Slalom Arena (X = 7.0m to 15.0m)             -->
+    <!-- 5 Cyan bollards spaced 1.6m apart alternating Y = +/- 0.32m               -->
+    <!-- ========================================================================= -->
+    <!-- Bollard 1: X = 7.5m, Y = +0.32m (Pass to Right) -->
     <model name="slalom_bollard_1">
       <static>true</static>
-      <pose>4.8 0.32 0.2 0 0 0</pose>
+      <pose>7.5 0.32 0.275 0 0 0</pose>
       <link name="link">
-        <collision name="col">
-          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
-        </collision>
+        <collision name="col"><geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry></collision>
         <visual name="vis">
-          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
-          <material>
-            <ambient>0.1 0.6 0.9 1</ambient>
-            <diffuse>0.1 0.6 0.9 1</diffuse>
-          </material>
+          <geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry>
+          <material><ambient>0.0 0.75 0.85 1</ambient><diffuse>0.0 0.75 0.85 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- Bollard 2 (offset right) -->
+    <!-- Bollard 2: X = 9.1m, Y = -0.32m (Pass to Left) -->
     <model name="slalom_bollard_2">
       <static>true</static>
-      <pose>6.4 -0.32 0.2 0 0 0</pose>
+      <pose>9.1 -0.32 0.275 0 0 0</pose>
       <link name="link">
-        <collision name="col">
-          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
-        </collision>
+        <collision name="col"><geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry></collision>
         <visual name="vis">
-          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
-          <material>
-            <ambient>0.1 0.6 0.9 1</ambient>
-            <diffuse>0.1 0.6 0.9 1</diffuse>
-          </material>
+          <geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry>
+          <material><ambient>0.0 0.75 0.85 1</ambient><diffuse>0.0 0.75 0.85 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- Bollard 3 (offset left) -->
+    <!-- Bollard 3: X = 10.7m, Y = +0.32m (Pass to Right) -->
     <model name="slalom_bollard_3">
       <static>true</static>
-      <pose>8.0 0.32 0.2 0 0 0</pose>
+      <pose>10.7 0.32 0.275 0 0 0</pose>
       <link name="link">
-        <collision name="col">
-          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
-        </collision>
+        <collision name="col"><geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry></collision>
         <visual name="vis">
-          <geometry><cylinder><radius>0.06</radius><length>0.4</length></cylinder></geometry>
-          <material>
-            <ambient>0.1 0.6 0.9 1</ambient>
-            <diffuse>0.1 0.6 0.9 1</diffuse>
-          </material>
+          <geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry>
+          <material><ambient>0.0 0.75 0.85 1</ambient><diffuse>0.0 0.75 0.85 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- ==================== HURDLE 3: Terrain Speed Bumps (Suspension Shock Challenge) ==================== -->
-    <model name="speed_bump_1">
+    <!-- Bollard 4: X = 12.3m, Y = -0.32m (Pass to Left) -->
+    <model name="slalom_bollard_4">
       <static>true</static>
-      <pose>9.4 0 0.004 0 0 0</pose>
+      <pose>12.3 -0.32 0.275 0 0 0</pose>
       <link name="link">
-        <collision name="col">
-          <geometry><box><size>0.20 1.8 0.008</size></box></geometry>
-          <surface>
-            <friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction>
-          </surface>
-        </collision>
+        <collision name="col"><geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry></collision>
         <visual name="vis">
-          <geometry><box><size>0.20 1.8 0.008</size></box></geometry>
-          <material>
-            <ambient>0.95 0.8 0.1 1</ambient>
-            <diffuse>0.95 0.8 0.1 1</diffuse>
-          </material>
+          <geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry>
+          <material><ambient>0.0 0.75 0.85 1</ambient><diffuse>0.0 0.75 0.85 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <model name="speed_bump_2">
+    <!-- Bollard 5: X = 13.9m, Y = +0.32m (Pass to Right) -->
+    <model name="slalom_bollard_5">
       <static>true</static>
-      <pose>10.0 0 0.005 0 0 0</pose>
+      <pose>13.9 0.32 0.275 0 0 0</pose>
       <link name="link">
-        <collision name="col">
-          <geometry><box><size>0.24 1.8 0.010</size></box></geometry>
-          <surface>
-            <friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction>
-          </surface>
-        </collision>
+        <collision name="col"><geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry></collision>
         <visual name="vis">
-          <geometry><box><size>0.24 1.8 0.010</size></box></geometry>
-          <material>
-            <ambient>0.95 0.8 0.1 1</ambient>
-            <diffuse>0.95 0.8 0.1 1</diffuse>
-          </material>
+          <geometry><cylinder><radius>0.06</radius><length>0.55</length></cylinder></geometry>
+          <material><ambient>0.0 0.75 0.85 1</ambient><diffuse>0.0 0.75 0.85 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- ==================== FINISH LINE ARCH ==================== -->
-    <model name="finish_arch">
+    <!-- ========================================================================= -->
+    <!-- STAGE 5: Precision Canyon / Squeeze Corridor (X = 15.5m to 18.5m)        -->
+    <!-- Tapered safety barriers narrowing to 0.90m corridor                       -->
+    <!-- ========================================================================= -->
+    <model name="precision_canyon">
       <static>true</static>
-      <pose>11.5 0 0 0 0 0</pose>
       <link name="link">
+        <!-- Left Straight Wall (Y = +0.45m, corridor width 0.90m) -->
+        <collision name="canyon_l_col">
+          <pose>17.0 0.45 0.15 0 0 0</pose>
+          <geometry><box><size>2.8 0.08 0.30</size></box></geometry>
+        </collision>
+        <visual name="canyon_l_vis">
+          <pose>17.0 0.45 0.15 0 0 0</pose>
+          <geometry><box><size>2.8 0.08 0.30</size></box></geometry>
+          <material><ambient>0.70 0.75 0.82 1</ambient><diffuse>0.70 0.75 0.82 1</diffuse></material>
+        </visual>
+
+        <!-- Right Straight Wall (Y = -0.45m) -->
+        <collision name="canyon_r_col">
+          <pose>17.0 -0.45 0.15 0 0 0</pose>
+          <geometry><box><size>2.8 0.08 0.30</size></box></geometry>
+        </collision>
+        <visual name="canyon_r_vis">
+          <pose>17.0 -0.45 0.15 0 0 0</pose>
+          <geometry><box><size>2.8 0.08 0.30</size></box></geometry>
+          <material><ambient>0.70 0.75 0.82 1</ambient><diffuse>0.70 0.75 0.82 1</diffuse></material>
+        </visual>
+
+        <!-- Left Entrance Funnel (X = 15.3, Y = +0.75 to +0.45) -->
+        <collision name="funnel_l_col">
+          <pose>15.3 0.75 0.15 0 0 -0.65</pose>
+          <geometry><box><size>0.85 0.08 0.30</size></box></geometry>
+        </collision>
+        <visual name="funnel_l_vis">
+          <pose>15.3 0.75 0.15 0 0 -0.65</pose>
+          <geometry><box><size>0.85 0.08 0.30</size></box></geometry>
+          <material><ambient>0.85 0.30 0.20 1</ambient><diffuse>0.85 0.30 0.20 1</diffuse></material>
+        </visual>
+
+        <!-- Right Entrance Funnel (X = 15.3, Y = -0.75 to -0.45) -->
+        <collision name="funnel_r_col">
+          <pose>15.3 -0.75 0.15 0 0 0.65</pose>
+          <geometry><box><size>0.85 0.08 0.30</size></box></geometry>
+        </collision>
+        <visual name="funnel_r_vis">
+          <pose>15.3 -0.75 0.15 0 0 0.65</pose>
+          <geometry><box><size>0.85 0.08 0.30</size></box></geometry>
+          <material><ambient>0.85 0.30 0.20 1</ambient><diffuse>0.85 0.30 0.20 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================================= -->
+    <!-- STAGE 6: Graded Multi-Frequency Speed Bumps (X = 19.8m to 22.8m)          -->
+    <!-- 4 Graded Arched Bumps (6mm, 7mm, 8mm, 6mm) testing suspension compliance  -->
+    <!-- ========================================================================= -->
+    <model name="speed_bumps">
+      <static>true</static>
+      <link name="link">
+        <!-- Bump 1: X = 20.0m, height 6mm -->
+        <collision name="bump1_col">
+          <pose>20.0 0 -0.074 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>2.2</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="bump1_vis">
+          <pose>20.0 0 -0.074 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>2.2</length></cylinder></geometry>
+          <material><ambient>0.85 0.50 0.1 1</ambient><diffuse>0.85 0.50 0.1 1</diffuse></material>
+        </visual>
+
+        <!-- Bump 2: X = 20.8m, height 7mm -->
+        <collision name="bump2_col">
+          <pose>20.8 0 -0.083 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.09</radius><length>2.2</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="bump2_vis">
+          <pose>20.8 0 -0.083 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.09</radius><length>2.2</length></cylinder></geometry>
+          <material><ambient>0.85 0.40 0.1 1</ambient><diffuse>0.85 0.40 0.1 1</diffuse></material>
+        </visual>
+
+        <!-- Bump 3: X = 21.6m, height 8mm -->
+        <collision name="bump3_col">
+          <pose>21.6 0 -0.092 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.10</radius><length>2.2</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="bump3_vis">
+          <pose>21.6 0 -0.092 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.10</radius><length>2.2</length></cylinder></geometry>
+          <material><ambient>0.90 0.35 0.1 1</ambient><diffuse>0.90 0.35 0.1 1</diffuse></material>
+        </visual>
+
+        <!-- Bump 4: X = 22.4m, height 6mm -->
+        <collision name="bump4_col">
+          <pose>22.4 0 -0.074 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>2.2</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="bump4_vis">
+          <pose>22.4 0 -0.074 1.5707963 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>2.2</length></cylinder></geometry>
+          <material><ambient>0.85 0.50 0.1 1</ambient><diffuse>0.85 0.50 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================================= -->
+    <!-- STAGE 7: Low Overhead Hurdle 2 (Double Squat Challenge!) (X = 25.0m)       -->
+    <!-- Requires robot to perform second deep squat after bumpy terrain           -->
+    <!-- ========================================================================= -->
+    <model name="hurdle_stage_2">
+      <static>true</static>
+      <link name="link">
+        <!-- Left vertical post -->
+        <collision name="h2_post_left_col">
+          <pose>25.0 0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+        </collision>
+        <visual name="h2_post_left_vis">
+          <pose>25.0 0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+          <material><ambient>0.95 0.40 0.05 1</ambient><diffuse>0.95 0.40 0.05 1</diffuse></material>
+        </visual>
+
+        <!-- Right vertical post -->
+        <collision name="h2_post_right_col">
+          <pose>25.0 -0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+        </collision>
+        <visual name="h2_post_right_vis">
+          <pose>25.0 -0.65 0.20 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.40</length></cylinder></geometry>
+          <material><ambient>0.95 0.40 0.05 1</ambient><diffuse>0.95 0.40 0.05 1</diffuse></material>
+        </visual>
+
+        <!-- Overhead horizontal crossbar (lower edge at Z = 0.265m) -->
+        <collision name="h2_crossbar_col">
+          <pose>25.0 0 0.285 0 0 0</pose>
+          <geometry><box><size>0.05 1.35 0.04</size></box></geometry>
+        </collision>
+        <visual name="h2_crossbar_vis">
+          <pose>25.0 0 0.285 0 0 0</pose>
+          <geometry><box><size>0.05 1.35 0.04</size></box></geometry>
+          <material><ambient>0.98 0.45 0.05 1</ambient><diffuse>0.98 0.45 0.05 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================================= -->
+    <!-- STAGE 8: Grand Sprint & Championship Finish Arch (X = 30.0m)              -->
+    <!-- Checkered finish line and monumental green victory portal                 -->
+    <!-- ========================================================================= -->
+    <model name="championship_finish_arch">
+      <static>true</static>
+      <link name="link">
+        <!-- Finish Line Bar (Checkered/White, X = 30.0m) -->
+        <visual name="finish_line_vis">
+          <pose>30.0 0 0.003 0 0 0</pose>
+          <geometry><box><size>0.35 2.2 0.002</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material>
+        </visual>
+
         <!-- Left Pillar -->
-        <visual name="pillar_left">
-          <pose>0 0.7 0.35 0 0 0</pose>
-          <geometry><cylinder><radius>0.05</radius><length>0.7</length></cylinder></geometry>
-          <material>
-            <ambient>0.1 0.8 0.3 1</ambient>
-            <diffuse>0.1 0.8 0.3 1</diffuse>
-          </material>
+        <collision name="fa_left_col">
+          <pose>30.0 0.95 0.50 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="fa_left_vis">
+          <pose>30.0 0.95 0.50 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.1 0.85 0.2 1</ambient><diffuse>0.1 0.85 0.2 1</diffuse></material>
         </visual>
+
         <!-- Right Pillar -->
-        <visual name="pillar_right">
-          <pose>0 -0.7 0.35 0 0 0</pose>
-          <geometry><cylinder><radius>0.05</radius><length>0.7</length></cylinder></geometry>
-          <material>
-            <ambient>0.1 0.8 0.3 1</ambient>
-            <diffuse>0.1 0.8 0.3 1</diffuse>
-          </material>
+        <collision name="fa_right_col">
+          <pose>30.0 -0.95 0.50 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="fa_right_vis">
+          <pose>30.0 -0.95 0.50 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.1 0.85 0.2 1</ambient><diffuse>0.1 0.85 0.2 1</diffuse></material>
         </visual>
-        <!-- Overhead Banner -->
-        <visual name="finish_banner">
-          <pose>0 0 0.7 0 0 0</pose>
-          <geometry><box><size>0.05 1.5 0.15</size></box></geometry>
-          <material>
-            <ambient>0.1 0.8 0.3 1</ambient>
-            <diffuse>0.1 0.8 0.3 1</diffuse>
-          </material>
-        </visual>
-        <!-- Finish Line Strip on Ground -->
-        <visual name="finish_line_ground">
-          <pose>0 0 0.003 0 0 0</pose>
-          <geometry><box><size>0.2 1.4 0.002</size></box></geometry>
-          <material>
-            <ambient>1.0 1.0 1.0 1</ambient>
-            <diffuse>1.0 1.0 1.0 1</diffuse>
-          </material>
+
+        <!-- Grand Overhead Banner (X = 30.0m, Z = 0.95m) -->
+        <collision name="fa_banner_col">
+          <pose>30.0 0 0.95 0 0 0</pose>
+          <geometry><box><size>0.08 1.95 0.25</size></box></geometry>
+        </collision>
+        <visual name="fa_banner_vis">
+          <pose>30.0 0 0.95 0 0 0</pose>
+          <geometry><box><size>0.08 1.95 0.25</size></box></geometry>
+          <material><ambient>0.1 0.88 0.25 1</ambient><diffuse>0.1 0.88 0.25 1</diffuse></material>
         </visual>
       </link>
     </model>
