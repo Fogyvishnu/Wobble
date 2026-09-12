@@ -25,6 +25,7 @@ setup(
             'balance_controller = wobble_control.balance_controller:main',
             'course_navigator = wobble_control.course_navigator:main',
             'remote_control = wobble_control.remote_control:main',
+            'yolo_detector = wobble_control.yolo_detector:main',
         ],
     },
 )

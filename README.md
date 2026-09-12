@@ -64,6 +64,18 @@ The autonomous vision navigator (`wobble_control/course_navigator.py`) processes
   <img src="assets/wobble_stage8_finish.png" alt="Stage 8: Championship Finish Archway Crossing" width="100%"/>
 </p>
 
+### Real-Time Deep Learning Perception (YOLOv8-Nano)
+In addition to classical obstacle tracking, Project Wobble integrates an onboard deep learning perception node (`wobble_control/yolo_detector.py`) powered by **YOLOv8-Nano**:
+* **High-Efficiency Inference:** Executes real-time object detection at ~25 FPS on CPU using a multi-backend architecture (Ultralytics PyTorch, ONNXRuntime, and OpenCV DNN).
+* **Spatial Geometry & Metric Depth Estimation:** Employs pinhole camera projection optics ($Z \approx \frac{f \cdot H_{ref}}{h_{pixels}}$) to estimate real-time distance and horizontal bearing angles to all 80 COCO object classes (pedestrians, obstacles, traffic signs, furniture, etc.).
+* **Autonomous Target Following & Person Tracking:** Features an active visual servoing mode that commands `/cmd_vel` to maintain centered bearing and a safe standoff distance, while dynamically modulating 4-bar squat height to interact with targets at eye-level.
+* **Proximity Collision Warning:** Employs forward cone monitoring ($Z < 0.9\text{ m}$, $\pm 18^\circ$) to trigger instantaneous safety alerts on `/wobble/collision_warning`.
+* **Cybernetic Vision HUD:** Broadcasts high-definition annotated streams on `/camera/yolo_annotated` with glowing class bounding boxes, tracking reticles, and real-time telemetry.
+
+<p align="center">
+  <img src="assets/wobble_yolo_detection_demo.png" alt="Project Wobble YOLOv8 Deep Learning Perception HUD" width="85%"/>
+</p>
+
 ---
 
 ## 3. Package Structure
@@ -219,6 +231,8 @@ pixi run remote-cli
 | `pixi run check-urdf` | Validates URDF/Xacro kinematic tree and link inertial definitions |
 | `pixi run squat` | Quick topic command to trigger squat posture ($-0.42$ rad) |
 | `pixi run stand` | Quick topic command to trigger upright posture ($0.0$ rad) |
+| `pixi run yolo` | Launches Gazebo simulation with active YOLOv8 deep learning perception & HUD |
+| `pixi run yolo-node` | Runs standalone YOLOv8 detector node processing camera stream |
 
 ---
 

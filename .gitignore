@@ -13,3 +13,9 @@ __pycache__/
 
 # Local private documentation
 GUIDE.md
+
+# Deep Learning weights & models
+*.pt
+*.onnx
+src/wobble_control/models/
+

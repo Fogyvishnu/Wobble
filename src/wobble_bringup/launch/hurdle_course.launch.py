@@ -28,6 +28,7 @@ def generate_launch_description():
     manual_mode = LaunchConfiguration('manual')
     use_remote = LaunchConfiguration('remote')
     enable_balance = LaunchConfiguration('balance')
+    enable_yolo = LaunchConfiguration('yolo')
 
     declare_use_rviz = DeclareLaunchArgument('rviz', default_value='true', description='Start RViz2 if true')
     declare_headless = DeclareLaunchArgument('headless', default_value='false', description='Run Gazebo headless if true')
@@ -35,6 +36,7 @@ def generate_launch_description():
     declare_manual = DeclareLaunchArgument('manual', default_value='false', description='Enable manual mode instead of autonomous navigator if true')
     declare_use_remote = DeclareLaunchArgument('remote', default_value=manual_mode, description='Start remote control GUI if true')
     declare_balance = DeclareLaunchArgument('balance', default_value='true', description='Start balance controller if true')
+    declare_yolo = DeclareLaunchArgument('yolo', default_value='false', description='Start YOLOv8 perception node if true')
 
     # Environment variables for Wayland/X11 & Loopback Discovery
     pixi_lib = '/home/vish/PROJECTS/Wobble/.pixi/envs/default/lib'
@@ -57,7 +59,8 @@ def generate_launch_description():
         declare_use_sim_time,
         declare_manual,
         declare_use_remote,
-        declare_balance
+        declare_balance,
+        declare_yolo
     ]
 
     if os.path.exists('/usr/lib/libdrm_amdgpu.so.1'):
@@ -145,6 +148,12 @@ def generate_launch_description():
         name='wobble_remote_control', condition=IfCondition(manual_mode), output='screen'
     )
 
+    # 7c. YOLOv8 Deep Learning Perception Node (runs when yolo:=true)
+    yolo_node = Node(
+        package='wobble_control', executable='yolo_detector',
+        name='wobble_yolo_detector', condition=IfCondition(enable_yolo), output='screen'
+    )
+
     # Launch control nodes after all controllers are fully activated
     delay_control_nodes = RegisterEventHandler(
         event_handler=OnProcessExit(
@@ -152,7 +161,8 @@ def generate_launch_description():
             on_exit=[
                 GroupAction(actions=[balance_node], condition=IfCondition(enable_balance)),
                 GroupAction(actions=[navigator_node], condition=UnlessCondition(manual_mode)),
-                GroupAction(actions=[remote_node], condition=IfCondition(use_remote))
+                GroupAction(actions=[remote_node], condition=IfCondition(use_remote)),
+                GroupAction(actions=[yolo_node], condition=IfCondition(enable_yolo))
             ]
         )
     )

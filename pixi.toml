@@ -23,6 +23,8 @@ ros-jazzy-xacro = "*"
 ros-jazzy-joint-state-publisher-gui = "*"
 ros-jazzy-teleop-twist-keyboard = "*"
 qt-wayland = ">=5.15.15,<6"
+ultralytics = ">=8.4.146,<9"
+torchvision = ">=0.28.0,<0.29"
 
 [tasks]
 build = "colcon build --symlink-install"
@@ -40,3 +42,5 @@ remote-cli = "bash -c 'source install/setup.bash && ros2 run wobble_control remo
 teleop = "bash -c 'source install/setup.bash && [ -f /usr/lib/libdrm_amdgpu.so.1 ] && export LD_PRELOAD=/usr/lib/libdrm_amdgpu.so.1; export QT_QPA_PLATFORM=xcb; ros2 run wobble_control remote_control'"
 squat = "bash -c 'source install/setup.bash && ros2 topic pub /cmd_squat std_msgs/msg/Float64 \"{data: -0.42}\" -1'"
 stand = "bash -c 'source install/setup.bash && ros2 topic pub /cmd_squat std_msgs/msg/Float64 \"{data: 0.0}\" -1'"
+yolo = "bash -c 'source install/setup.bash && [ -f /usr/lib/libdrm_amdgpu.so.1 ] && export LD_PRELOAD=/usr/lib/libdrm_amdgpu.so.1; export GZ_IP=127.0.0.1; export GZ_SIM_SYSTEM_PLUGIN_PATH=$CONDA_PREFIX/lib:$GZ_SIM_SYSTEM_PLUGIN_PATH; export QT_QPA_PLATFORM=xcb; ros2 launch wobble_bringup yolo_vision.launch.py'"
+yolo-node = "bash -c 'source install/setup.bash && ros2 run wobble_control yolo_detector'"
