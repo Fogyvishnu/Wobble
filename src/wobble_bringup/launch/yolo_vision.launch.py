@@ -21,11 +21,11 @@ def generate_launch_description():
     declare_headless = DeclareLaunchArgument(
         'headless', default_value='false', description='Run Gazebo headless if true'
     )
-    declare_use_remote = DeclareLaunchArgument(
-        'remote', default_value='true', description='Start remote control GUI if true'
-    )
     declare_manual = DeclareLaunchArgument(
         'manual', default_value='true', description='Enable manual drive mode if true'
+    )
+    declare_use_remote = DeclareLaunchArgument(
+        'remote', default_value=manual_mode, description='Start remote control GUI if true'
     )
     declare_balance = DeclareLaunchArgument(
         'balance', default_value='true', description='Start balance controller if true'

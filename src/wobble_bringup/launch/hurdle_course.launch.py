@@ -139,19 +139,19 @@ def generate_launch_description():
     # 7. Autonomous Course Navigator Node (runs when manual:=false)
     navigator_node = Node(
         package='wobble_control', executable='course_navigator',
-        name='wobble_course_navigator', condition=UnlessCondition(manual_mode), output='screen'
+        name='wobble_course_navigator', output='screen'
     )
 
-    # 7b. Remote Control Node (runs when manual:=true)
+    # 7b. Remote Control Node (runs when remote:=true)
     remote_node = Node(
         package='wobble_control', executable='remote_control',
-        name='wobble_remote_control', condition=IfCondition(manual_mode), output='screen'
+        name='wobble_remote_control', output='screen'
     )
 
     # 7c. YOLOv8 Deep Learning Perception Node (runs when yolo:=true)
     yolo_node = Node(
         package='wobble_control', executable='yolo_detector',
-        name='wobble_yolo_detector', condition=IfCondition(enable_yolo), output='screen'
+        name='wobble_yolo_detector', output='screen'
     )
 
     # Launch control nodes after all controllers are fully activated

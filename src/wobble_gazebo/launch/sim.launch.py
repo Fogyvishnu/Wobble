@@ -5,7 +5,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, Command
+from launch.substitutions import LaunchConfiguration, Command, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -15,7 +15,7 @@ def generate_launch_description():
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
 
     world_file = LaunchConfiguration('world')
-    world_path = os.path.join(pkg_wobble_gazebo, 'worlds', 'wobble_hurdle_course.sdf')
+    world_path = PathJoinSubstitution([pkg_wobble_gazebo, 'worlds', world_file])
     bridge_config = os.path.join(pkg_wobble_gazebo, 'config', 'ros_gz_bridge.yaml')
     xacro_file = os.path.join(pkg_wobble_description, 'urdf', 'wobble.urdf.xacro')
 
@@ -81,7 +81,7 @@ def generate_launch_description():
             os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')
         ),
         launch_arguments={
-            'gz_args': f'-r -v 3 {world_path}'
+            'gz_args': ['-r -v 3 ', world_path]
         }.items(),
         condition=UnlessCondition(headless)
     )
@@ -91,7 +91,7 @@ def generate_launch_description():
             os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')
         ),
         launch_arguments={
-            'gz_args': f'-s -r -v 3 {world_path}'
+            'gz_args': ['-s -r -v 3 ', world_path]
         }.items(),
         condition=IfCondition(headless)
     )

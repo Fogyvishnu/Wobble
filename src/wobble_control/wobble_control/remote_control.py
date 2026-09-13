@@ -605,6 +605,14 @@ if HAS_PYQT:
 
 def run_cli_mode(ros_node: RemoteControlRosNode):
     """Terminal CLI interactive controller using non-blocking termios."""
+    if not sys.stdin.isatty():
+        print("[Wobble Remote] Non-interactive stdin detected. Running background ROS spin...")
+        try:
+            rclpy.spin(ros_node)
+        except KeyboardInterrupt:
+            pass
+        return
+
     import select
     import termios
     import tty

@@ -43,4 +43,5 @@ teleop = "bash -c 'source install/setup.bash && [ -f /usr/lib/libdrm_amdgpu.so.1
 squat = "bash -c 'source install/setup.bash && ros2 topic pub /cmd_squat std_msgs/msg/Float64 \"{data: -0.42}\" -1'"
 stand = "bash -c 'source install/setup.bash && ros2 topic pub /cmd_squat std_msgs/msg/Float64 \"{data: 0.0}\" -1'"
 yolo = "bash -c 'source install/setup.bash && [ -f /usr/lib/libdrm_amdgpu.so.1 ] && export LD_PRELOAD=/usr/lib/libdrm_amdgpu.so.1; export GZ_IP=127.0.0.1; export GZ_SIM_SYSTEM_PLUGIN_PATH=$CONDA_PREFIX/lib:$GZ_SIM_SYSTEM_PLUGIN_PATH; export QT_QPA_PLATFORM=xcb; ros2 launch wobble_bringup yolo_vision.launch.py'"
+yolo-headless = "bash -c 'source install/setup.bash && [ -f /usr/lib/libdrm_amdgpu.so.1 ] && export LD_PRELOAD=/usr/lib/libdrm_amdgpu.so.1; export GZ_IP=127.0.0.1; export GZ_SIM_SYSTEM_PLUGIN_PATH=$CONDA_PREFIX/lib:$GZ_SIM_SYSTEM_PLUGIN_PATH; export QT_QPA_PLATFORM=xcb; ros2 launch wobble_bringup yolo_vision.launch.py headless:=true rviz:=false remote:=false'"
 yolo-node = "bash -c 'source install/setup.bash && ros2 run wobble_control yolo_detector'"

@@ -232,6 +232,7 @@ pixi run remote-cli
 | `pixi run squat` | Quick topic command to trigger squat posture ($-0.42$ rad) |
 | `pixi run stand` | Quick topic command to trigger upright posture ($0.0$ rad) |
 | `pixi run yolo` | Launches Gazebo simulation with active YOLOv8 deep learning perception & HUD |
+| `pixi run yolo-headless` | Runs YOLOv8 perception simulation in headless mode (for CI / testing) |
 | `pixi run yolo-node` | Runs standalone YOLOv8 detector node processing camera stream |
 
 ---

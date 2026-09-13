@@ -111,6 +111,11 @@ class WobbleYOLODetector(Node):
 
         # Publishers
         self.pub_annotated = self.create_publisher(Image, self.annotated_topic, 10)
+        self.pub_rviz_annotated = (
+            self.create_publisher(Image, '/camera/annotated_image', 10)
+            if self.annotated_topic != '/camera/annotated_image'
+            else None
+        )
         self.pub_detections = self.create_publisher(String, self.detections_topic, 10)
         self.pub_warning = self.create_publisher(Bool, '/wobble/collision_warning', 10)
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -251,7 +256,7 @@ class WobbleYOLODetector(Node):
 
         # Autonomous Tracking Controller
         if self.enable_tracking and target_obj is not None:
-            self.execute_tracking_control(target_obj)
+            self.execute_tracking_control(target_obj, h)
 
         # Publish JSON Detections Telemetry
         json_payload = {
@@ -276,6 +281,8 @@ class WobbleYOLODetector(Node):
             out_msg = self.bridge.cv2_to_imgmsg(annotated_frame, 'bgr8')
             out_msg.header = msg.header
             self.pub_annotated.publish(out_msg)
+            if self.pub_rviz_annotated is not None:
+                self.pub_rviz_annotated.publish(out_msg)
         except Exception:
             pass
 
@@ -446,7 +453,7 @@ class WobbleYOLODetector(Node):
                 })
         return detections
 
-    def execute_tracking_control(self, target):
+    def execute_tracking_control(self, target, frame_h=480):
         """Active closed-loop target tracking and person follower controller."""
         bearing_rad = target['bearing_rad']
         dist = target['distance_m']
@@ -475,7 +482,7 @@ class WobbleYOLODetector(Node):
 
         # Dynamic Squat Interaction:
         # If target vertical center is in the bottom third of the image (low object/sitting person), squat down!
-        h_norm = target['centroid'][1] / 480.0
+        h_norm = target['centroid'][1] / float(frame_h)
         squat_cmd = Float64()
         if h_norm > 0.65:
             squat_cmd.data = -0.38  # Crouch down to inspect
